@@ -1,0 +1,91 @@
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+/* La scène ne capte rien : seules les entités réactivent les pointeurs. */
+#stage {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Petit canvas par entité, déplacé par le compositeur (aucun redessin au déplacement). */
+.sprite {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: auto;
+  image-rendering: pixelated;
+  will-change: transform;
+  cursor: grab;
+  touch-action: none;
+}
+
+.sprite.dragging {
+  cursor: grabbing;
+}
+
+.shadow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: none;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  will-change: transform;
+}
+
+.debug-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.bubble {
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-width: 220px;
+  padding: 6px 10px;
+  border: 2px solid #1b1f2a;
+  border-radius: 8px;
+  background: #fdfdfd;
+  color: #1b1f2a;
+  font-size: 13px;
+  line-height: 1.3;
+  white-space: pre-line;
+  pointer-events: none;
+  will-change: transform;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+.bubble.visible {
+  opacity: 1;
+}
+
+.bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 10px;
+  height: 10px;
+  margin-left: -6px;
+  border-right: 2px solid #1b1f2a;
+  border-bottom: 2px solid #1b1f2a;
+  background: #fdfdfd;
+  transform: rotate(45deg);
+}

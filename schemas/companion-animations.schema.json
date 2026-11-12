@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://desktop-companion.local/schemas/companion-animations.v1.json",
+  "title": "Animations de pack .companion (v1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["formatVersion", "animations"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "formatVersion": { "const": 1 },
+    "animations": {
+      "type": "object",
+      "maxProperties": 64,
+      "propertyNames": { "pattern": "^[a-z][a-z0-9_]{0,31}$" },
+      "required": [
+        "idle",
+        "walk",
+        "run",
+        "jump",
+        "fall",
+        "climb",
+        "sit_window",
+        "grab_edge",
+        "sleep",
+        "eat",
+        "play",
+        "train",
+        "dragged",
+        "attack_light",
+        "attack_heavy",
+        "hurt",
+        "victory",
+        "defeat"
+      ],
+      "additionalProperties": { "$ref": "#/$defs/animation" }
+    }
+  },
+  "$defs": {
+    "animation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["row", "frameCount", "fps", "loop"],
+      "properties": {
+        "row": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "startColumn": { "type": "integer", "minimum": 0, "maximum": 255, "default": 0 },
+        "frameCount": { "type": "integer", "minimum": 1, "maximum": 32 },
+        "fps": { "type": "number", "exclusiveMinimum": 0, "maximum": 30 },
+        "loop": { "type": "boolean" },
+        "frameDurations": {
+          "description": "Durée de chaque frame en ms ; remplace fps. Doit contenir frameCount éléments.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": { "type": "integer", "minimum": 16, "maximum": 5000 }
+        },
+        "next": {
+          "description": "Animation enchaînée à la fin (si loop = false).",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,31}$"
+        },
+        "events": {
+          "type": "array",
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/event" }
+        }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frame", "type"],
+      "properties": {
+        "frame": { "type": "integer", "minimum": 0, "maximum": 31 },
+        "type": { "enum": ["sound", "particle", "hit", "footstep", "emote", "custom"] },
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,31}$" },
+        "anchor": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]{0,31}$" },
+        "offset": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y"],
+          "properties": {
+            "x": { "type": "integer", "minimum": -256, "maximum": 256 },
+            "y": { "type": "integer", "minimum": -256, "maximum": 256 }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "enum": ["sound", "particle", "emote", "custom"] } } },
+          "then": { "required": ["id"] }
+        }
+      ]
+    }
+  }
+}

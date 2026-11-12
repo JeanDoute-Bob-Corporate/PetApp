@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://desktop-companion.local/schemas/companion-manifest.v1.json",
+  "title": "Manifeste de pack .companion (v1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "formatVersion",
+    "id",
+    "name",
+    "author",
+    "version",
+    "sprite",
+    "hitbox",
+    "anchorPoints",
+    "baseStats",
+    "personalityWeights"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "formatVersion": { "const": 1 },
+    "id": {
+      "description": "Identifiant inversé unique (ex: dev.auteur.nom).",
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)+$"
+    },
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "author": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "version": { "$ref": "#/$defs/semver" },
+    "description": { "type": "string", "maxLength": 280 },
+    "license": { "type": "string", "maxLength": 64 },
+    "minAppVersion": { "$ref": "#/$defs/semver" },
+    "tags": {
+      "type": "array",
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z0-9-]{1,24}$" }
+    },
+    "sprite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "frameWidth", "frameHeight"],
+      "properties": {
+        "file": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}\\.png$" },
+        "frameWidth": { "type": "integer", "minimum": 8, "maximum": 256 },
+        "frameHeight": { "type": "integer", "minimum": 8, "maximum": 256 },
+        "scale": { "type": "integer", "minimum": 1, "maximum": 8, "default": 3 },
+        "facing": { "enum": ["left", "right"], "default": "right" }
+      }
+    },
+    "hitbox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "integer", "minimum": 0 },
+        "y": { "type": "integer", "minimum": 0 },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "anchorPoints": {
+      "type": "object",
+      "required": ["feet", "bubble"],
+      "maxProperties": 16,
+      "propertyNames": { "pattern": "^[a-z][A-Za-z0-9]{0,31}$" },
+      "additionalProperties": { "$ref": "#/$defs/point" }
+    },
+    "baseStats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strength", "agility", "endurance", "technique"],
+      "properties": {
+        "strength": { "$ref": "#/$defs/baseStat" },
+        "agility": { "$ref": "#/$defs/baseStat" },
+        "endurance": { "$ref": "#/$defs/baseStat" },
+        "technique": { "$ref": "#/$defs/baseStat" }
+      }
+    },
+    "personalityWeights": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "playful": { "$ref": "#/$defs/weight" },
+        "lazy": { "$ref": "#/$defs/weight" },
+        "curious": { "$ref": "#/$defs/weight" },
+        "social": { "$ref": "#/$defs/weight" },
+        "brave": { "$ref": "#/$defs/weight" },
+        "glutton": { "$ref": "#/$defs/weight" },
+        "mischievous": { "$ref": "#/$defs/weight" }
+      }
+    },
+    "sounds": {
+      "type": "object",
+      "maxProperties": 32,
+      "propertyNames": { "pattern": "^[a-z][a-z0-9_]{0,31}$" },
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^sfx/[A-Za-z0-9_-]{1,64}\\.(ogg|wav)$"
+      }
+    }
+  },
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?$"
+    },
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "integer", "minimum": 0 },
+        "y": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "baseStat": { "type": "integer", "minimum": 1, "maximum": 20 },
+    "weight": { "type": "number", "minimum": 0, "maximum": 3, "default": 1 }
+  }
+}

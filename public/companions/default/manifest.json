@@ -1,0 +1,42 @@
+{
+  "$schema": "../../../schemas/companion-manifest.schema.json",
+  "formatVersion": 1,
+  "id": "dev.default.byte",
+  "name": "Byte",
+  "author": "Desktop Companion",
+  "version": "1.0.0",
+  "description": "Petit robot dÃ©veloppeur qui aime les terminaux, les balles rebondissantes et les siestes sur les barres de titre.",
+  "license": "MIT",
+  "minAppVersion": "0.1.0",
+  "tags": ["robot", "code", "default"],
+  "sprite": {
+    "file": "spritesheet.png",
+    "frameWidth": 32,
+    "frameHeight": 32,
+    "scale": 3,
+    "facing": "right"
+  },
+  "hitbox": { "x": 3, "y": 0, "width": 26, "height": 32 },
+  "anchorPoints": {
+    "feet": { "x": 16, "y": 32 },
+    "bubble": { "x": 16, "y": 0 },
+    "head": { "x": 16, "y": 12 },
+    "handLeft": { "x": 7, "y": 24 },
+    "handRight": { "x": 25, "y": 24 }
+  },
+  "baseStats": {
+    "strength": 5,
+    "agility": 6,
+    "endurance": 4,
+    "technique": 7
+  },
+  "personalityWeights": {
+    "playful": 1.2,
+    "lazy": 0.8,
+    "curious": 1.5,
+    "social": 1.0,
+    "brave": 0.9,
+    "glutton": 1.0,
+    "mischievous": 1.1
+  }
+}

@@ -1,0 +1,202 @@
+{
+  "$schema": "../../../schemas/companion-animations.schema.json",
+  "formatVersion": 1,
+  "animations": {
+    "idle": {
+      "row": 0,
+      "frameCount": 6,
+      "fps": 4,
+      "loop": true,
+      "frameDurations": [
+        450,
+        450,
+        450,
+        450,
+        1500,
+        120
+      ]
+    },
+    "walk": {
+      "row": 1,
+      "frameCount": 4,
+      "fps": 8,
+      "loop": true,
+      "events": [
+        {
+          "frame": 0,
+          "type": "footstep"
+        },
+        {
+          "frame": 2,
+          "type": "footstep"
+        }
+      ]
+    },
+    "run": {
+      "row": 2,
+      "frameCount": 4,
+      "fps": 12,
+      "loop": true,
+      "events": [
+        {
+          "frame": 0,
+          "type": "footstep"
+        },
+        {
+          "frame": 2,
+          "type": "footstep"
+        }
+      ]
+    },
+    "jump": {
+      "row": 3,
+      "frameCount": 4,
+      "fps": 12,
+      "loop": false,
+      "next": "fall"
+    },
+    "fall": {
+      "row": 4,
+      "frameCount": 2,
+      "fps": 8,
+      "loop": true
+    },
+    "climb": {
+      "row": 5,
+      "frameCount": 4,
+      "fps": 8,
+      "loop": true
+    },
+    "sit_window": {
+      "row": 6,
+      "frameCount": 4,
+      "fps": 3,
+      "loop": true,
+      "frameDurations": [
+        800,
+        800,
+        600,
+        120
+      ]
+    },
+    "grab_edge": {
+      "row": 7,
+      "frameCount": 3,
+      "fps": 6,
+      "loop": true
+    },
+    "sleep": {
+      "row": 8,
+      "frameCount": 4,
+      "fps": 2,
+      "loop": true,
+      "events": [
+        {
+          "frame": 0,
+          "type": "particle",
+          "id": "zzz",
+          "anchor": "head"
+        }
+      ]
+    },
+    "eat": {
+      "row": 9,
+      "frameCount": 4,
+      "fps": 6,
+      "loop": false,
+      "next": "idle"
+    },
+    "play": {
+      "row": 10,
+      "frameCount": 6,
+      "fps": 10,
+      "loop": true
+    },
+    "train": {
+      "row": 11,
+      "frameCount": 6,
+      "fps": 12,
+      "loop": true,
+      "events": [
+        {
+          "frame": 3,
+          "type": "particle",
+          "id": "impact",
+          "anchor": "handRight"
+        }
+      ]
+    },
+    "dragged": {
+      "row": 12,
+      "frameCount": 4,
+      "fps": 10,
+      "loop": true
+    },
+    "attack_light": {
+      "row": 13,
+      "frameCount": 4,
+      "fps": 14,
+      "loop": false,
+      "next": "idle",
+      "events": [
+        {
+          "frame": 2,
+          "type": "hit"
+        }
+      ]
+    },
+    "attack_heavy": {
+      "row": 14,
+      "frameCount": 6,
+      "fps": 12,
+      "loop": false,
+      "next": "idle",
+      "frameDurations": [
+        120,
+        80,
+        80,
+        60,
+        140,
+        120
+      ],
+      "events": [
+        {
+          "frame": 4,
+          "type": "hit"
+        },
+        {
+          "frame": 4,
+          "type": "particle",
+          "id": "impact",
+          "anchor": "handRight"
+        }
+      ]
+    },
+    "hurt": {
+      "row": 15,
+      "frameCount": 3,
+      "fps": 10,
+      "loop": false,
+      "next": "idle"
+    },
+    "victory": {
+      "row": 16,
+      "frameCount": 6,
+      "fps": 8,
+      "loop": true,
+      "events": [
+        {
+          "frame": 2,
+          "type": "emote",
+          "id": "star"
+        }
+      ]
+    },
+    "defeat": {
+      "row": 17,
+      "frameCount": 4,
+      "fps": 6,
+      "loop": false
+    }
+  }
+}

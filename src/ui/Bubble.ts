@@ -38,6 +38,10 @@ export class Bubble implements LoopSystem {
     this.el.style.transform = transform;
   }
 
+  destroy(): void {
+    this.el.remove();
+  }
+
   activity(): Activity {
     return this.remaining > 0 ? 'idle' : 'dormant';
   }

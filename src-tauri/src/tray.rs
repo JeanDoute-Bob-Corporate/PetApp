@@ -1,5 +1,8 @@
 //! Icône System Tray et menu rapide.
 
+use std::thread;
+use std::time::Duration;
+
 use tauri::menu::{CheckMenuItem, IsMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, Wry};
@@ -94,11 +97,26 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
     Ok(())
 }
 
+/// Délai laissé au frontend pour sauvegarder la progression avant de quitter.
+const QUIT_FLUSH_DELAY: Duration = Duration::from_millis(400);
+
+fn quit(app: &AppHandle) {
+    let _ = app.emit("flush-save", ());
+    let app = app.clone();
+    thread::spawn(move || {
+        thread::sleep(QUIT_FLUSH_DELAY);
+        app.exit(0);
+    });
+}
+
 fn handle_menu_event(app: &AppHandle, id: &str) {
     match id {
         "toggle" => overlay::toggle_visibility(app),
-        "autostart" => toggle_autostart(app),
-        "quit" => app.exit(0),
+        "autostart" => {
+            let enabled = autostart_enabled(app);
+            set_autostart(app, !enabled);
+        }
+        "quit" => quit(app),
         action if FRONTEND_ACTIONS.contains(&action) => {
             if !overlay::is_visible(app) {
                 overlay::set_visible(app, true);
@@ -113,18 +131,24 @@ fn handle_menu_event(app: &AppHandle, id: &str) {
     }
 }
 
-fn toggle_autostart(app: &AppHandle) {
+pub fn autostart_enabled(app: &AppHandle) -> bool {
+    app.autolaunch().is_enabled().unwrap_or(false)
+}
+
+/// Active/désactive le lancement au démarrage ; renvoie l'état réel de l'OS.
+pub fn set_autostart(app: &AppHandle, enabled: bool) -> bool {
     let launcher = app.autolaunch();
-    let was_enabled = launcher.is_enabled().unwrap_or(false);
-    let result = if was_enabled { launcher.disable() } else { launcher.enable() };
+    let result = if enabled { launcher.enable() } else { launcher.disable() };
     if let Err(err) = result {
         eprintln!("[tray] autostart : {err}");
     }
     // On affiche l'état réel de l'OS, pas l'état souhaité.
-    let now_enabled = launcher.is_enabled().unwrap_or(was_enabled);
+    let now_enabled = launcher.is_enabled().unwrap_or(!enabled);
     if let Some(handles) = app.try_state::<TrayHandles>() {
         let _ = handles.autostart.set_checked(now_enabled);
     }
+    let _ = app.emit("autostart-changed", now_enabled);
+    now_enabled
 }
 
 /// Les CheckMenuItem se cochent tout seuls au clic : on impose le comportement radio.

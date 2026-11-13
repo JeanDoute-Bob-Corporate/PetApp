@@ -18,6 +18,8 @@ export interface Bounds {
 
 const SUPPORT_TOLERANCE = 2;
 
+export type Side = 'left' | 'right' | 'top' | 'bottom';
+
 /**
  * Géométrie du bureau en px CSS : sols des écrans (zones de travail) et plateformes
  * formées par les bords supérieurs visibles des fenêtres.
@@ -28,6 +30,8 @@ export class World {
   bounds: Bounds = { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
   private windows = new Map<number, TrackedWindow>();
   private monitorTops: Array<{ x1: number; x2: number; top: number }> = [];
+  /** Bords reliés à l'écran d'un autre joueur : ce ne sont plus des murs. */
+  links = new Set<Side>();
   /** Hauteur du compagnon : une plateforme sans cette place au-dessus est ignorée. */
   private headroom = 0;
 
@@ -63,8 +67,38 @@ export class World {
     }
   }
 
+  /**
+   * Bord relié franchi par un corps (assez loin pour qu'il ne soit plus visible), sinon
+   * null. Le sol reste solide : on ne passe par le bas qu'en tombant hors du monde.
+   */
+  exitSide(b: { x: number; y: number; halfWidth: number; height: number; vy: number; crossLinks?: boolean }): Side | null {
+    if (b.crossLinks === false) return null;
+    const { left, right, top, bottom } = this.bounds;
+    if (this.links.has('left') && b.x < left - b.halfWidth * 0.6) return 'left';
+    if (this.links.has('right') && b.x > right + b.halfWidth * 0.6) return 'right';
+    if (this.links.has('top') && b.vy < 0 && b.y < top + b.height * 0.3) return 'top';
+    if (this.links.has('bottom') && b.y > bottom + b.height * 0.5) return 'bottom';
+    return null;
+  }
+
+  /** Position le long d'un bord (0 → 1), pour la transmettre à l'écran voisin. */
+  edgeRatio(side: Side, x: number, y: number): number {
+    const { left, right, top, bottom } = this.bounds;
+    const t = side === 'left' || side === 'right' ? (y - top) / (bottom - top) : (x - left) / (right - left);
+    return Math.min(1, Math.max(0, t));
+  }
+
   window(id: number): TrackedWindow | undefined {
     return this.windows.get(id);
+  }
+
+  /** Haut de l'écran situé sous `x` (le « plafond » pour se suspendre). */
+  monitorTopAt(x: number): number {
+    return this.monitorTops.find((m) => x >= m.x1 && x <= m.x2)?.top ?? this.bounds.top;
+  }
+
+  windowList(): Iterable<TrackedWindow> {
+    return this.windows.values();
   }
 
   /** Sol de l'écran situé sous `x` (null au-dessus d'un vide entre écrans). */

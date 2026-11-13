@@ -8,9 +8,9 @@
 
 export const FRAME = 32;
 
-export type Eyes = 'open' | 'blink' | 'closed' | 'happy' | 'squint' | 'wide' | 'sad' | 'dead';
-export type Mouth = 'flat' | 'smile' | 'o' | 'frown' | 'none';
-export type Arm = 'down' | 'up' | 'out' | 'back' | 'forward';
+export type Eyes = 'open' | 'blink' | 'closed' | 'happy' | 'squint' | 'wide' | 'sad' | 'dead' | 'angry' | 'spiral';
+export type Mouth = 'flat' | 'smile' | 'o' | 'frown' | 'yawn' | 'wavy' | 'none';
+export type Arm = 'down' | 'up' | 'out' | 'back' | 'forward' | 'wave' | 'reach' | 'hold' | 'cross' | 'point';
 export type Legs = 'stand' | 'stepA' | 'stepB' | 'crouch' | 'tuck' | 'sit' | 'dangle0' | 'dangle1' | 'spread';
 export type Prop = 'none' | 'cookie' | 'bite' | 'ball';
 
@@ -34,6 +34,22 @@ export interface FrameSpec {
   propY?: number;
   /** Petit « z » de sommeil : 0 aucun, 1 bas, 2 haut. */
   zzz?: number;
+  /** Teint verdâtre (malade après avoir été secoué). */
+  sick?: boolean;
+  /** Vomi : 0 rien, 1 début du jet, 2 jet complet. */
+  vomit?: number;
+  /**
+   * Vue de profil, agrippé à un mur situé à droite de la case (escalade). Le moteur
+   * retourne le sprite pour un mur à gauche.
+   */
+  side?: SidePose;
+}
+
+export interface SidePose {
+  frontArm: 'high' | 'low';
+  backArm: 'high' | 'low';
+  frontLeg: 'up' | 'down';
+  backLeg: 'up' | 'down';
 }
 
 type Rgba = readonly [number, number, number, number];
@@ -51,8 +67,13 @@ const CHIP: Rgba = [110, 70, 40, 255];
 const ZZZ: Rgba = [120, 170, 255, 255];
 const HURT_BODY: Rgba = [255, 168, 168, 255];
 const HURT_SHADE: Rgba = [214, 110, 110, 255];
+const SICK_BODY: Rgba = [188, 222, 168, 255];
+const SICK_SHADE: Rgba = [132, 172, 120, 255];
+const PUKE: Rgba = [140, 200, 70, 255];
+const PUKE_DARK: Rgba = [90, 150, 40, 255];
 
 export function paintFrame(spec: FrameSpec) {
+  if (spec.side) return paintSide(spec.side, spec.bob ?? 0, spec.eyes === 'blink');
   const size = FRAME;
   const px = new Uint8ClampedArray(size * size * 4);
 
@@ -148,6 +169,30 @@ export function paintFrame(spec: FrameSpec) {
       case 'forward':
         rects.push([24, 21, 6, 3, OUTLINE], [25, 22, 4, 1, BODY], [29, 20, 3, 5, OUTLINE], [30, 21, 1, 3, BODY]);
         break;
+      case 'wave':
+        // Bras levé en biais, main ouverte (coucou).
+        rects.push(
+          [23, 18, 3, 4, OUTLINE], [25, 14, 3, 5, OUTLINE], [26, 9, 5, 5, OUTLINE],
+          [24, 19, 1, 2, BODY], [26, 15, 1, 3, BODY], [27, 10, 3, 3, BODY],
+        );
+        break;
+      case 'hold':
+        // Avant-bras ramené devant le torse : il porte quelque chose dans ses bras.
+        rects.push([22, 20, 3, 5, OUTLINE], [17, 22, 7, 3, OUTLINE], [23, 21, 1, 3, BODY], [18, 23, 5, 1, BODY]);
+        break;
+      case 'cross':
+        // Bras croisés : une bande en travers du torse (dessinée par chaque bras).
+        rects.push([22, 20, 3, 4, OUTLINE], [11, 22, 13, 3, OUTLINE], [12, 23, 11, 1, BODY]);
+        break;
+      case 'point':
+        // Index tendu vers l'avant et le bas (il « clique » sur l'écran).
+        rects.push([23, 20, 3, 4, OUTLINE], [25, 22, 3, 3, OUTLINE], [27, 24, 3, 3, OUTLINE], [29, 26, 3, 3, OUTLINE],
+          [24, 21, 1, 2, BODY], [26, 23, 1, 1, BODY], [28, 25, 1, 1, BODY], [30, 27, 1, 1, BODY]);
+        break;
+      case 'reach':
+        // Bras tendu jusqu'en haut de la case (suspendu au plafond).
+        rects.push([26, 0, 3, 21, OUTLINE], [27, 1, 1, 19, BODY]);
+        break;
     }
     for (const [x, y, w, h, c] of rects) {
       const rx = side === 1 ? x : FRAME - x - w;
@@ -158,8 +203,9 @@ export function paintFrame(spec: FrameSpec) {
   arm(armR, 1);
 
   // Boulons latéraux (cachés par un bras levé).
-  if (armL !== 'up') fill(ux(4), uy(11), 2, 4, OUTLINE);
-  if (armR !== 'up') fill(ux(26), uy(11), 2, 4, OUTLINE);
+  const raised = (a: Arm): boolean => a === 'up' || a === 'wave' || a === 'reach';
+  if (!raised(armL)) fill(ux(4), uy(11), 2, 4, OUTLINE);
+  if (!raised(armR)) fill(ux(26), uy(11), 2, 4, OUTLINE);
 
   // Tête et écran.
   fill(ux(6), uy(6), 20, 14, OUTLINE);
@@ -205,6 +251,23 @@ export function paintFrame(spec: FrameSpec) {
       fill(ex(12), ey(12), 2, 1, EYE); dot(ex(13), ey(11), EYE);
       fill(ex(18), ey(12), 2, 1, EYE); dot(ex(18), ey(11), EYE);
       break;
+    case 'angry':
+      // Sourcils froncés vers le centre.
+      fill(ex(12), ey(12), 2, 2, EYE);
+      fill(ex(18), ey(12), 2, 2, EYE);
+      dot(ex(11), ey(10), EYE); dot(ex(12), ey(10), EYE); dot(ex(13), ey(11), EYE);
+      dot(ex(20), ey(10), EYE); dot(ex(19), ey(10), EYE); dot(ex(18), ey(11), EYE);
+      break;
+    case 'spiral':
+      // Yeux en spirale (tournis).
+      pair((x) => {
+        fill(ex(x) - 1, ey(10), 3, 1, EYE);
+        dot(ex(x) + 1, ey(11), EYE);
+        fill(ex(x) - 1, ey(12), 3, 1, EYE);
+        dot(ex(x) - 1, ey(11), EYE);
+        dot(ex(x), ey(11), SCREEN);
+      });
+      break;
     case 'dead':
       pair((x) => {
         dot(ex(x) - 1, ey(10), EYE); dot(ex(x) + 1, ey(10), EYE);
@@ -227,6 +290,15 @@ export function paintFrame(spec: FrameSpec) {
       break;
     case 'o':
       fill(ex(15), ey(13), 2, 2, EYE);
+      break;
+    case 'wavy':
+      // Bouche ondulée (nausée).
+      dot(ex(13), ey(14), EYE); dot(ex(14), ey(13), EYE); dot(ex(15), ey(14), EYE);
+      dot(ex(16), ey(13), EYE); dot(ex(17), ey(14), EYE); dot(ex(18), ey(13), EYE);
+      break;
+    case 'yawn':
+      fill(ex(14), ey(12), 4, 4, EYE);
+      fill(ex(15), ey(13), 2, 2, SCREEN);
       break;
     case 'none':
       break;
@@ -264,6 +336,32 @@ export function paintFrame(spec: FrameSpec) {
     fill(27, zy, 3, 1, ZZZ); dot(28, zy + 1, ZZZ); fill(27, zy + 2, 3, 1, ZZZ);
   }
 
+  if (spec.vomit) {
+    // Jet devant lui (le robot regarde vers la droite) qui tombe au sol.
+    fill(ux(22), uy(14), 3, 2, PUKE);
+    fill(ux(24), uy(15), 2, 3, PUKE);
+    if (spec.vomit > 1) {
+      fill(ux(25), uy(17), 2, 5, PUKE);
+      fill(26, 23, 2, 6, PUKE);
+      fill(24, 29, 7, 2, PUKE);
+      fill(25, 30, 5, 1, PUKE_DARK);
+      fill(26, 20, 1, 2, PUKE_DARK);
+    }
+  }
+
+  if (spec.sick) {
+    for (let o = 0; o < px.length; o += 4) {
+      const r = px[o], g = px[o + 1], b = px[o + 2];
+      const swap = r === BODY[0] && g === BODY[1] && b === BODY[2] ? SICK_BODY
+        : r === SHADE[0] && g === SHADE[1] && b === SHADE[2] ? SICK_SHADE : null;
+      if (swap) {
+        px[o] = swap[0];
+        px[o + 1] = swap[1];
+        px[o + 2] = swap[2];
+      }
+    }
+  }
+
   if (spec.hurt) {
     for (let o = 0; o < px.length; o += 4) {
       const r = px[o], g = px[o + 1], b = px[o + 2];
@@ -277,5 +375,80 @@ export function paintFrame(spec: FrameSpec) {
     }
   }
 
+  return px;
+}
+
+/**
+ * Robot de profil, tourné vers la droite, mains et pieds contre un mur au bord droit
+ * de la case (x = 31). Membres « hauts » et « bas » alternés = grimpe main après main.
+ */
+function paintSide(pose: SidePose, bob: number, blink: boolean) {
+  const size = FRAME;
+  const px = new Uint8ClampedArray(size * size * 4);
+  const fill = (x: number, y: number, w: number, h: number, c: Rgba): void => {
+    for (let j = Math.max(0, y); j < Math.min(size, y + h); j++) {
+      for (let i = Math.max(0, x); i < Math.min(size, x + w); i++) {
+        const o = (j * size + i) * 4;
+        px[o] = c[0];
+        px[o + 1] = c[1];
+        px[o + 2] = c[2];
+        px[o + 3] = c[3];
+      }
+    }
+  };
+  /** Trait épais : contour 3 px, cœur 1 px de la couleur du membre. */
+  const segment = (x0: number, y0: number, x1: number, y1: number, pass: 'outline' | Rgba): void => {
+    const steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
+    for (let i = 0; i <= steps; i++) {
+      const x = Math.round(x0 + ((x1 - x0) * i) / steps);
+      const y = Math.round(y0 + ((y1 - y0) * i) / steps);
+      if (pass === 'outline') fill(x - 1, y - 1, 3, 3, OUTLINE);
+      else fill(x, y, 1, 1, pass);
+    }
+  };
+  /** Membre articulé (épaule → coude → main) terminé par une main/un pied contre le mur. */
+  const limb = (joints: Array<[number, number]>, color: Rgba): void => {
+    const end = joints[joints.length - 1]!;
+    for (let i = 1; i < joints.length; i++) segment(joints[i - 1]![0], joints[i - 1]![1], joints[i]![0], joints[i]![1], 'outline');
+    fill(end[0] - 1, end[1] - 2, 4, 4, OUTLINE);
+    for (let i = 1; i < joints.length; i++) segment(joints[i - 1]![0], joints[i - 1]![1], joints[i]![0], joints[i]![1], color);
+    fill(end[0], end[1] - 1, 2, 2, color);
+  };
+  const arm = (high: boolean, color: Rgba): void =>
+    high
+      ? limb([[19, 19 + bob], [24, 14 + bob], [29, 11 + bob]], color)
+      : limb([[19, 21 + bob], [24, 24 + bob], [29, 21 + bob]], color);
+  const leg = (up: boolean, color: Rgba): void =>
+    up ? limb([[16, 25], [22, 22], [29, 25]], color) : limb([[15, 25], [19, 29], [29, 29]], color);
+
+  // Membres arrière (plus sombres), puis corps, puis membres avant.
+  arm(pose.backArm === 'high', SHADE);
+  leg(pose.backLeg === 'up', SHADE);
+
+  // Corps vu de profil.
+  fill(11, 18 + bob, 11, 8, OUTLINE);
+  fill(12, 19 + bob, 9, 6, BODY);
+  fill(12, 24 + bob, 9, 1, SHADE);
+  fill(19, 20 + bob, 2, 2, ACCENT);
+
+  // Tête de profil, l'écran du visage tourné vers le mur.
+  fill(9, 5 + bob, 15, 14, OUTLINE);
+  fill(10, 6 + bob, 13, 12, BODY);
+  fill(10, 16 + bob, 13, 2, SHADE);
+  fill(11, 7 + bob, 2, 1, LIGHT);
+  fill(17, 8 + bob, 6, 7, SCREEN);
+  if (blink) fill(20, 11 + bob, 2, 1, EYE);
+  else fill(20, 10 + bob, 2, 2, EYE);
+  fill(19, 13 + bob, 3, 1, EYE);
+  // Boulon arrière.
+  fill(7, 10 + bob, 2, 4, OUTLINE);
+
+  // Antenne, légèrement penchée vers l'arrière.
+  fill(14, 2 + bob, 2, 3, OUTLINE);
+  fill(12, 0 + bob, 4, 3, OUTLINE);
+  fill(13, 1 + bob, 2, 1, ACCENT);
+
+  arm(pose.frontArm === 'high', BODY);
+  leg(pose.frontLeg === 'up', BODY);
   return px;
 }

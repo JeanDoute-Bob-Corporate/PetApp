@@ -23,6 +23,11 @@ pub fn data_dir(app: &AppHandle) -> io::Result<PathBuf> {
         .path()
         .app_data_dir()
         .map_err(|err| io::Error::new(io::ErrorKind::NotFound, err.to_string()))?;
+    // Seconde instance de test : progression et réglages à part.
+    let dir = match crate::test_instance() {
+        Some(name) => dir.join(format!("instance-{name}")),
+        None => dir,
+    };
     fs::create_dir_all(&dir)?;
     Ok(dir)
 }
@@ -83,4 +88,26 @@ pub fn load_settings(app: &AppHandle) -> Settings {
 pub fn save_settings(app: &AppHandle, settings: &Settings) -> io::Result<()> {
     let path = data_dir(app)?.join(SETTINGS_FILE);
     write_json_atomic(&path, settings)
+}
+
+const COMPANION_FILE: &str = "companion.json";
+/// Garde-fou : la progression fait quelques Ko, 256 Ko signale un bug côté frontend.
+pub const MAX_COMPANION_BYTES: usize = 256 * 1024;
+
+/// Progression du compagnon (jauges, stats, jouets). Le modèle est défini côté
+/// TypeScript (`CompanionStats.ts`) : Rust ne fait que la stocker de façon atomique.
+pub fn load_companion(app: &AppHandle) -> Option<serde_json::Value> {
+    let path = data_dir(app).ok()?.join(COMPANION_FILE);
+    match read_json::<serde_json::Value>(&path) {
+        Ok(value) => value,
+        Err(err) => {
+            eprintln!("[persistence] {COMPANION_FILE} illisible ({err}), tentative avec la sauvegarde");
+            read_json(&backup_path(&path)).ok().flatten()
+        }
+    }
+}
+
+pub fn save_companion(app: &AppHandle, data: &serde_json::Value) -> io::Result<()> {
+    let path = data_dir(app)?.join(COMPANION_FILE);
+    write_json_atomic(&path, data)
 }

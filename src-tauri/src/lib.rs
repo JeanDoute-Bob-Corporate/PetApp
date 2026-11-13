@@ -5,7 +5,10 @@
 
 mod commands;
 mod hit_test;
+mod mischief;
 mod overlay;
+mod p2p_bridge;
+mod package_loader;
 mod persistence;
 mod settings;
 mod state;
@@ -22,13 +25,22 @@ use crate::hit_test::HitState;
 use crate::state::AppState;
 use crate::window_tracker::WorldStore;
 
+/// Seconde instance de test (`DC_INSTANCE=2`) : données séparées, pas de verrou
+/// d'instance unique. Sert à essayer le multijoueur sur une seule machine.
+pub fn test_instance() -> Option<String> {
+    std::env::var("DC_INSTANCE").ok().filter(|v| !v.is_empty() && v.chars().all(|c| c.is_ascii_alphanumeric()))
+}
+
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+    if test_instance().is_none() {
         // Doit être le premier plugin : un second lancement (autostart + lancement
         // manuel, par exemple) réaffiche simplement le compagnon existant.
-        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             overlay::set_visible(app, true);
-        }))
+        }));
+    }
+    builder
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             Some(vec!["--autostart"]),
@@ -40,6 +52,28 @@ pub fn run() {
             commands::set_pointer_capture,
             commands::set_cursor_tracking,
             commands::get_world,
+            commands::load_companion,
+            commands::save_companion,
+            commands::get_autostart,
+            commands::set_autostart,
+            commands::debug_log,
+            commands::dev_autotest,
+            commands::nudge_window,
+            commands::desktop_icons,
+            commands::move_desktop_icon,
+            commands::desktop_icon_for_name,
+            commands::poke_screen,
+            commands::set_keyboard_focus,
+            commands::import_companion,
+            commands::list_packs,
+            commands::pack_file,
+            commands::delete_pack,
+            commands::p2p_status,
+            commands::p2p_host,
+            commands::p2p_browse,
+            commands::p2p_connect,
+            commands::p2p_send,
+            commands::p2p_close,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -51,6 +85,8 @@ pub fn run() {
                 hit: Arc::clone(&hit),
             });
             app.manage(WorldStore::default());
+            app.manage(mischief::MischiefState::default());
+            app.manage(Arc::new(p2p_bridge::P2pState::new()));
 
             overlay::setup(&handle, &hit, settings.visible)?;
             tray::setup(&handle, &settings)?;

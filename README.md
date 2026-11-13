@@ -29,7 +29,9 @@ ajouter `?debug` à l'URL affiche aussi les sols et plateformes détectés.
 Autres commandes utiles :
 
 ```bash
-npm run companion    # régénère la planche et animations.json du robot par défaut
+npm test             # tests du modèle de soins et d'entraînement
+npm run companion    # régénère les planches (robot + jouets) et animations.json
+npm run examples     # packs d'exemple dans examples/ (un valide, un invalide)
 npm run measure      # mémoire et CPU de l'app et de WebView2 (app lancée)
 npm run tauri build -- --no-bundle   # exécutable release seul
 ```
@@ -48,3 +50,31 @@ persistés de façon atomique dans `%APPDATA%\dev.desktopcompanion.core\`.
   il tombe si elle est fermée, réduite ou recouverte ;
 - lancer à la souris, ombre portée (profil Haute qualité) ;
 - pause automatique pendant une application plein écran.
+
+**Étape 3** :
+- IA : machine à états + IA utilitaire pondérée par les besoins et la personnalité ;
+- jauges Faim / Énergie / Bonheur, 4 aliments aux effets distincts, sommeil ;
+- stats Force / Agilité / Endurance / Technique, entraînées avec les jouets ;
+- jouets à poser : balle, sac de frappe, terminal de code, gamelle ; bugs à chasser ;
+- escalade des bords d'écran et des fenêtres, poussée, trébuchements, bâillements,
+  bouderie, célébrations ;
+- souris : caresses, glisser-lancer, sursaut, poursuite du curseur ;
+- double-clic : menu radial d'actions rapides et **Console** à onglets (Fiche, Jouets,
+  Look, Salon, Réglages), en pixel art, aux couleurs du compagnon actif ;
+- sons 8-bit optionnels, particules, sauvegarde automatique de la progression.
+
+**Étape 4** :
+- packs `.companion` : import (bouton, glisser sur le compagnon ou sur la Console),
+  validation détaillée en français, application en conservant la progression ;
+  exemple valide `examples/byte-sakura.companion` ; **guide de création**
+  [`docs/GUIDE_PACK_COMPANION.md`](docs/GUIDE_PACK_COMPANION.md), modèle
+  `examples/template/` et `npm run pack -- <dossier>` (assemble et pré-vérifie) ;
+- **bureaux reliés** : jusqu'à 8 joueurs dans un salon (réseau local ou code court) ;
+  l'hôte place les écrans sur une grille, et ce qui franchit un bord relié (compagnon,
+  jouets, boules de papier) passe sur l'écran du voisin avec sa vitesse ; rappel de
+  son compagnon et de ses jouets ;
+- combat automatique entre compagnons d'un même écran (double-clic sur celui d'un
+  autre joueur → ⚔️), basé sur les stats entraînées × la forme, commenté en bulles.
+
+Essayer le multijoueur sur une seule machine : lancer une seconde instance avec
+`DC_INSTANCE=2` (données séparées).

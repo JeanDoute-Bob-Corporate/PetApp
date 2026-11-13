@@ -18,6 +18,9 @@ tauri-plugin-autostart = "2"
 tauri-plugin-single-instance = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+png = "0.17"
+socket2 = "0.5"
 
 # Mêmes versions que celles utilisées par Tauri/wry : aucune copie en double compilée.
 [target.'cfg(windows)'.dependencies]
@@ -26,6 +29,10 @@ windows = { version = "0.62", features = [
   "Win32_Foundation",
   "Win32_Graphics_Dwm",
   "Win32_Graphics_Gdi",
+  "Win32_System_Diagnostics_Debug",
+  "Win32_System_Memory",
+  "Win32_System_Threading",
+  "Win32_UI_Controls",
   "Win32_UI_Shell",
   "Win32_UI_WindowsAndMessaging",
 ] }

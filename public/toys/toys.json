@@ -1,0 +1,18 @@
+{
+  "cell": 24,
+  "sprites": {
+    "ball": 0,
+    "bag": 1,
+    "terminal0": 2,
+    "terminal1": 3,
+    "bowl_empty": 4,
+    "bowl_full": 5,
+    "cookie": 6,
+    "apple": 7,
+    "coffee": 8,
+    "bug0": 9,
+    "bug1": 10,
+    "note": 11,
+    "file": 12
+  }
+}

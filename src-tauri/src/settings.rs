@@ -97,6 +97,12 @@ pub struct BehaviorToggles {
     pub sounds: bool,
     /// Mode « Ne pas déranger » : pause quand une app plein écran est active.
     pub dnd_fullscreen: bool,
+    /// Bêtises quand il boude : tirer sur les côtés des fenêtres.
+    pub mischief_windows: bool,
+    /// Bêtises : déplacer les icônes du bureau.
+    pub mischief_icons: bool,
+    /// Bêtises : cliquer (uniquement sur le fond du bureau).
+    pub mischief_clicks: bool,
 }
 
 impl Default for BehaviorToggles {
@@ -107,6 +113,9 @@ impl Default for BehaviorToggles {
             mouse_interactions: true,
             sounds: false,
             dnd_fullscreen: true,
+            mischief_windows: true,
+            mischief_icons: true,
+            mischief_clicks: true,
         }
     }
 }
@@ -120,6 +129,8 @@ pub struct Settings {
     pub performance_profile: PerformanceProfile,
     pub behaviors: BehaviorToggles,
     pub visible: bool,
+    /// Pack d'apparence appliqué (`None` = compagnon par défaut).
+    pub active_pack: Option<String>,
 }
 
 impl Default for Settings {
@@ -129,6 +140,7 @@ impl Default for Settings {
             performance_profile: PerformanceProfile::default(),
             behaviors: BehaviorToggles::default(),
             visible: true,
+            active_pack: None,
         }
     }
 }

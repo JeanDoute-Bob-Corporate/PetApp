@@ -27,8 +27,10 @@
         "maximizable": false,
         "minimizable": false,
         "focus": false,
+        "focusable": false,
+        "dragDropEnabled": false,
         "visible": false,
-        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,Translate,AutofillServerCommunication,MediaRouter --disable-background-networking --disable-component-update --disable-sync --renderer-process-limit=1 --no-first-run"
+        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,Translate,AutofillServerCommunication,MediaRouter --disable-background-networking --disable-component-update --disable-sync --renderer-process-limit=1 --no-first-run --autoplay-policy=no-user-gesture-required"
       }
     ],
     "security": {

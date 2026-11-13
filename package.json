@@ -11,7 +11,12 @@
     "tauri": "tauri",
     "icons": "node scripts/gen-icon.ts && tauri icon src-tauri/icons/app-icon.png",
     "companion": "node scripts/build-default-companion.ts",
-    "measure": "powershell -NoProfile -File scripts/measure-memory.ps1 -CpuSeconds 10"
+    "test": "node --test \"src/**/*.test.ts\"",
+    "examples": "node scripts/build-example-packs.ts",
+    "measure": "powershell -NoProfile -File scripts/measure-memory.ps1 -CpuSeconds 10",
+    "pack": "node scripts/pack-companion.ts",
+    "template": "node scripts/build-template.ts",
+    "ui-icons": "node scripts/build-ui-icons.ts"
   },
   "dependencies": {
     "@tauri-apps/api": "^2"

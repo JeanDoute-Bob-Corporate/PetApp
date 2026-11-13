@@ -12,6 +12,14 @@ const BOUNCE_RESTITUTION = 0.3;
 /** En dessous du monde (vide entre deux écrans) : on réapparaît. */
 const OUT_OF_WORLD_MARGIN = 400;
 
+/** Réglages physiques propres à un corps (la balle rebondit et roule, le robot non). */
+export interface BodyOptions {
+  groundFriction?: number;
+  bounceThreshold?: number;
+  bounceRestitution?: number;
+  wallRestitution?: number;
+}
+
 export interface StepResult {
   landed: boolean;
   bounced: boolean;
@@ -35,15 +43,28 @@ export class Body {
   ground: Segment | null = null;
   /** true : le contrôleur impose vx (marche) ; false : friction au sol. */
   driven = false;
+  /**
+   * Peut franchir un bord relié (lancé, ou parti explorer). Sinon les bords reliés font
+   * office de murs : un jouet poussé ou un compagnon qui court ne part pas par accident.
+   */
+  crossLinks = true;
   private windowOffsetX = 0;
   readonly halfWidth: number;
   readonly height: number;
+  private readonly friction: number;
+  private readonly bounceThreshold: number;
+  private readonly bounceRestitution: number;
+  private readonly wallRestitution: number;
 
-  constructor(x: number, y: number, halfWidth: number, height: number) {
+  constructor(x: number, y: number, halfWidth: number, height: number, options: BodyOptions = {}) {
     this.x = x;
     this.y = y;
     this.halfWidth = halfWidth;
     this.height = height;
+    this.friction = options.groundFriction ?? GROUND_FRICTION;
+    this.bounceThreshold = options.bounceThreshold ?? BOUNCE_THRESHOLD;
+    this.bounceRestitution = options.bounceRestitution ?? BOUNCE_RESTITUTION;
+    this.wallRestitution = options.wallRestitution ?? WALL_RESTITUTION;
   }
 
   get grounded(): boolean {
@@ -122,7 +143,7 @@ export class Body {
     };
 
     if (this.ground) {
-      if (!this.driven) this.vx *= Math.exp(-GROUND_FRICTION * dt);
+      if (!this.driven) this.vx *= Math.exp(-this.friction * dt);
       if (Math.abs(this.vx) < 1 && !this.driven) this.vx = 0;
       this.x += this.vx * dt;
       result.hitWall = this.clampWalls(world, false);
@@ -145,8 +166,8 @@ export class Body {
     this.y += this.vy * dt;
     result.hitWall = this.clampWalls(world, true);
 
-    // Plafond (haut du bureau virtuel).
-    if (this.y - this.height < world.bounds.top) {
+    // Plafond (haut du bureau virtuel), sauf s'il est relié à l'écran d'un autre joueur.
+    if (!(this.crossLinks && world.links.has('top')) && this.y - this.height < world.bounds.top) {
       this.y = world.bounds.top + this.height;
       this.vy = Math.abs(this.vy) * 0.2;
     }
@@ -155,9 +176,9 @@ export class Body {
       const seg = world.landing(this.x, prevY, this.y);
       if (seg) {
         result.impactSpeed = this.vy;
-        if (this.vy > BOUNCE_THRESHOLD) {
+        if (this.vy > this.bounceThreshold) {
           this.y = seg.y;
-          this.vy = -this.vy * BOUNCE_RESTITUTION;
+          this.vy = -this.vy * this.bounceRestitution;
           this.vx *= 0.6;
           result.bounced = true;
         } else {
@@ -170,7 +191,7 @@ export class Body {
       }
     }
 
-    if (this.y > world.bounds.bottom + OUT_OF_WORLD_MARGIN) {
+    if (this.y > world.bounds.bottom + OUT_OF_WORLD_MARGIN && !(this.crossLinks && world.links.has('bottom'))) {
       this.respawn(world);
       result.respawned = true;
       result.landed = true;
@@ -187,16 +208,17 @@ export class Body {
   }
 
   private clampWalls(world: World, airborne: boolean): -1 | 0 | 1 {
-    const min = world.bounds.left + this.halfWidth;
-    const max = world.bounds.right - this.halfWidth;
+    // Un bord relié laisse passer (le corps part chez le voisin).
+    const min = this.crossLinks && world.links.has('left') ? -Infinity : world.bounds.left + this.halfWidth;
+    const max = this.crossLinks && world.links.has('right') ? Infinity : world.bounds.right - this.halfWidth;
     if (this.x < min) {
       this.x = min;
-      this.vx = airborne ? Math.abs(this.vx) * WALL_RESTITUTION : 0;
+      this.vx = airborne ? Math.abs(this.vx) * this.wallRestitution : -this.vx * this.wallRestitution;
       return -1;
     }
     if (this.x > max) {
       this.x = max;
-      this.vx = airborne ? -Math.abs(this.vx) * WALL_RESTITUTION : 0;
+      this.vx = airborne ? -Math.abs(this.vx) * this.wallRestitution : -this.vx * this.wallRestitution;
       return 1;
     }
     return 0;

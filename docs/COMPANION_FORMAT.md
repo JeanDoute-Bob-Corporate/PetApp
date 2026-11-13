@@ -1,5 +1,11 @@
 # Format de pack `.companion` — v1
 
+> **Pour créer un pack**, lis plutôt le guide pas à pas :
+> [`GUIDE_PACK_COMPANION.md`](GUIDE_PACK_COMPANION.md). Il contient le rôle et les
+> conventions de dessin de chaque animation, un modèle (`examples/template/`), la
+> commande `npm run pack -- <dossier>` et un brief prêt à transmettre à un artiste ou à
+> une IA. Cette page est la référence technique condensée.
+
 Un pack `.companion` est une **archive ZIP renommée** qui change l'apparence et la
 personnalité du compagnon. Ses statistiques acquises (jauges, entraînement) ne sont
 jamais stockées dans le pack : appliquer un pack les conserve.
@@ -9,6 +15,13 @@ et [`schemas/companion-animations.schema.json`](../schemas/companion-animations.
 (JSON Schema 2020-12). Exemple complet : [`public/companions/default/`](../public/companions/default), généré
 par `npm run companion` (planche et animations.json produites depuis une seule table,
 donc toujours cohérentes).
+
+## Installer un pack
+
+Double-clic sur le compagnon → **Console** → onglet **Look** → *Parcourir*, ou glisser
+le fichier `.companion` sur le compagnon ou sur la Console. En cas de problème, toutes les
+erreurs sont listées (fichier › champ : explication). Un pack d'exemple valide est
+fourni : `examples/byte-sakura.companion` (`npm run examples`).
 
 ## Contenu de l'archive
 
@@ -33,6 +46,7 @@ mon-pack.companion
   "version": "1.0.0",                 // SemVer
   "description": "Petit robot développeur.",
   "minAppVersion": "0.1.0",
+  "accentColor": "#4dfcb0",           // facultatif : couleur de l'interface quand il est actif
   "sprite": {
     "file": "spritesheet.png",
     "frameWidth": 32, "frameHeight": 32,   // taille d'une case de la grille
@@ -94,10 +108,13 @@ sont autorisés (ignorés par le moteur s'il ne les connaît pas).
 |---|---|---|
 | `sound` | `id` (clé de `manifest.sounds`) | joue le bruitage (si sons activés) |
 | `particle` | `id`, `anchor?`, `offset?` | émet une particule (si profil ≠ Éco) |
-| `hit` | — | frame d'impact en combat (synchronisation P2P) |
-| `footstep` | — | petit nuage de poussière / son de pas |
-| `emote` | `id` | affiche une bulle d'émote |
-| `custom` | `id` | événement libre transmis à l'IA |
+| `hit` | — | instant de l'impact : coup, tir dans la balle, lâcher d'une note, clic |
+| `footstep` | — | petit nuage de poussière pendant la course |
+| `emote` | `id` | comme `particle`, mais affichée même en profil Éco |
+| `custom` | `id` | réservé (accepté, sans effet) |
+
+Particules : `zzz`, `heart`, `impact`, `sweat`, `star`, `anger`, `note`, `food`,
+`sparkle`, `alert`, `dust`, `sick`.
 
 Sans `next` et `loop: false`, l'animation reste figée sur sa dernière frame.
 

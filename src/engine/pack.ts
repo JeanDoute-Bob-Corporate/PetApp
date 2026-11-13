@@ -15,6 +15,8 @@ export interface CompanionManifest {
   name: string;
   author: string;
   version: string;
+  /** Couleur d'accent de l'interface (« #rrggbb ») ; sinon tirée de la planche. */
+  accentColor?: string;
   sprite: {
     file: string;
     frameWidth: number;
@@ -61,28 +63,37 @@ export interface CompanionPack {
   manifest: CompanionManifest;
   animations: Record<string, AnimationDef>;
   image: HTMLImageElement;
+  /** Sons du pack (id → données .ogg/.wav), joués par les événements `sound`. */
+  sounds: Record<string, ArrayBuffer>;
 }
 
-async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`${url} : HTTP ${res.status}`);
-  return (await res.json()) as T;
-}
+/** Lecture d'un fichier du pack, quelle que soit sa source (URL ou backend). */
+export type PackReader = (file: string) => Promise<ArrayBuffer>;
 
-export async function loadPack(baseUrl: string): Promise<CompanionPack> {
+export function loadPack(baseUrl: string): Promise<CompanionPack> {
   const base = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+  return loadPackWith(async (file) => {
+    const res = await fetch(`${base}${file}`);
+    if (!res.ok) throw new Error(`${file} : HTTP ${res.status}`);
+    return res.arrayBuffer();
+  });
+}
+
+export async function loadPackWith(read: PackReader): Promise<CompanionPack> {
+  const json = async <T>(file: string): Promise<T> => JSON.parse(new TextDecoder().decode(await read(file))) as T;
   const [manifest, animFile] = await Promise.all([
-    fetchJson<CompanionManifest>(`${base}manifest.json`),
-    fetchJson<{ animations: Record<string, AnimationDef> }>(`${base}animations.json`),
+    json<CompanionManifest>('manifest.json'),
+    json<{ animations: Record<string, AnimationDef> }>('animations.json'),
   ]);
 
   // `load` plutôt que `decode()` : decode() reste en attente tant que la page est
   // invisible (overlay masqué au démarrage), ce qui bloquerait l'initialisation.
+  const url = URL.createObjectURL(new Blob([await read(manifest.sprite.file)], { type: 'image/png' }));
   const image = new Image();
   await new Promise<void>((resolve, reject) => {
     image.onload = () => resolve();
     image.onerror = () => reject(new Error(`${manifest.sprite.file} : image illisible`));
-    image.src = `${base}${manifest.sprite.file}`;
+    image.src = url;
   });
 
   const { frameWidth, frameHeight } = manifest.sprite;
@@ -102,5 +113,16 @@ export async function loadPack(baseUrl: string): Promise<CompanionPack> {
   }
   if (errors.length > 0) throw new Error(`Pack « ${manifest.id} » invalide :\n- ${errors.join('\n- ')}`);
 
-  return { manifest, animations: animFile.animations, image };
+  // Sons : facultatifs ; un fichier illisible est simplement ignoré.
+  const sounds: Record<string, ArrayBuffer> = {};
+  await Promise.all(
+    Object.entries(manifest.sounds ?? {}).map(async ([id, file]) => {
+      try {
+        sounds[id] = await read(file);
+      } catch {
+        /* son absent (pack d'un visiteur, par exemple) */
+      }
+    }),
+  );
+  return { manifest, animations: animFile.animations, image, sounds };
 }

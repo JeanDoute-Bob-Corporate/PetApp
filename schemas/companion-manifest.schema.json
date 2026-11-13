@@ -31,6 +31,11 @@
     "version": { "$ref": "#/$defs/semver" },
     "description": { "type": "string", "maxLength": 280 },
     "license": { "type": "string", "maxLength": 64 },
+    "accentColor": {
+      "description": "Couleur d'accent de l'interface quand ce compagnon est actif. Absente : tirée de la planche.",
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}$"
+    },
     "minAppVersion": { "$ref": "#/$defs/semver" },
     "tags": {
       "type": "array",

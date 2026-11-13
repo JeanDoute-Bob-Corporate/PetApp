@@ -1,0 +1,63 @@
+{
+  "formatVersion": 1,
+  "id": "dev.monpseudo.moncompagnon",
+  "name": "Mon compagnon",
+  "author": "Mon pseudo",
+  "version": "1.0.0",
+  "description": "Une phrase qui présente le compagnon.",
+  "license": "CC-BY-4.0",
+  "accentColor": "#ffb347",
+  "tags": [
+    "exemple"
+  ],
+  "sprite": {
+    "file": "spritesheet.png",
+    "frameWidth": 32,
+    "frameHeight": 32,
+    "scale": 3,
+    "facing": "right"
+  },
+  "hitbox": {
+    "x": 6,
+    "y": 4,
+    "width": 20,
+    "height": 28
+  },
+  "anchorPoints": {
+    "feet": {
+      "x": 16,
+      "y": 32
+    },
+    "bubble": {
+      "x": 16,
+      "y": 2
+    },
+    "head": {
+      "x": 16,
+      "y": 10
+    },
+    "handLeft": {
+      "x": 8,
+      "y": 22
+    },
+    "handRight": {
+      "x": 24,
+      "y": 22
+    }
+  },
+  "baseStats": {
+    "strength": 5,
+    "agility": 5,
+    "endurance": 5,
+    "technique": 5
+  },
+  "personalityWeights": {
+    "playful": 1,
+    "lazy": 1,
+    "curious": 1,
+    "social": 1,
+    "brave": 1,
+    "glutton": 1,
+    "mischievous": 1
+  }
+}

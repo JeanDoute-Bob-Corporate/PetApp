@@ -43,6 +43,12 @@ impl HitRect {
         [self.x, self.y, self.w, self.h].iter().all(|v| v.is_finite()) && self.w > 0.0 && self.h > 0.0
     }
 
+    fn distance(&self, px: f64, py: f64) -> f64 {
+        let dx = (self.x - px).max(px - (self.x + self.w)).max(0.0);
+        let dy = (self.y - py).max(py - (self.y + self.h)).max(0.0);
+        dx.hypot(dy)
+    }
+
     fn contains(&self, px: f64, py: f64, margin: f64) -> bool {
         px >= self.x - margin
             && px <= self.x + self.w + margin
@@ -65,10 +71,15 @@ impl Default for OverlayGeometry {
     }
 }
 
+/// Au-delà de cette distance des zones interactives, le curseur n'intéresse pas le
+/// compagnon : on n'envoie qu'un dernier événement `near: false`.
+const CURSOR_NEAR_RADIUS: f64 = 400.0;
+
 #[derive(Clone, Copy, Serialize)]
 struct CursorPayload {
     x: f64,
     y: f64,
+    near: bool,
 }
 
 pub struct HitState {
@@ -127,6 +138,10 @@ impl HitState {
         update(&mut lock(&self.geometry));
     }
 
+    fn is_near(&self, x: f64, y: f64) -> bool {
+        lock(&self.rects).iter().any(|r| r.distance(x, y) <= CURSOR_NEAR_RADIUS)
+    }
+
     fn wants_cursor(&self, x: f64, y: f64) -> bool {
         self.capture.load(Ordering::Relaxed)
             || lock(&self.rects).iter().any(|r| r.contains(x, y, HIT_MARGIN))
@@ -152,6 +167,7 @@ fn run(app: AppHandle, state: Arc<HitState>) {
     let mut interactive: Option<bool> = None;
     let mut last_cursor: Option<(i32, i32)> = None;
     let mut last_emit = Instant::now();
+    let mut was_near = false;
 
     loop {
         if !state.visible.load(Ordering::Relaxed) {
@@ -177,12 +193,13 @@ fn run(app: AppHandle, state: Arc<HitState>) {
         }
 
         let moved = last_cursor != Some((cx, cy));
-        if moved
-            && state.cursor_tracking.load(Ordering::Relaxed)
-            && last_emit.elapsed() >= CURSOR_EMIT_INTERVAL
-        {
-            let _ = app.emit("cursor-moved", CursorPayload { x, y });
-            last_emit = Instant::now();
+        if moved && state.cursor_tracking.load(Ordering::Relaxed) && last_emit.elapsed() >= CURSOR_EMIT_INTERVAL {
+            let near = state.is_near(x, y);
+            if near || was_near {
+                let _ = app.emit("cursor-moved", CursorPayload { x, y, near });
+                last_emit = Instant::now();
+            }
+            was_near = near;
         }
         last_cursor = Some((cx, cy));
 

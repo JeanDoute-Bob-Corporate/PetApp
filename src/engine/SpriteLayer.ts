@@ -16,6 +16,7 @@ export class SpriteLayer {
   private cssScale = 1;
   private x = Number.NaN;
   private y = Number.NaN;
+  private rotation = 0;
 
   constructor(parent: HTMLElement, width: number, height: number, baseScale: number) {
     this.width = width;
@@ -79,15 +80,22 @@ export class SpriteLayer {
     }
   }
 
-  /** Position du coin haut-gauche en px CSS, accrochée au pixel physique. */
-  setPosition(x: number, y: number): void {
+  /**
+   * Position du coin haut-gauche en px CSS, accrochée au pixel physique.
+   * `rotation` en degrés, autour du bas du sprite (oscillation du sac de frappe).
+   */
+  setPosition(x: number, y: number, rotation = 0): void {
     const dpr = window.devicePixelRatio || 1;
     const rx = Math.round(x * dpr) / dpr;
     const ry = Math.round(y * dpr) / dpr;
-    if (rx === this.x && ry === this.y) return;
+    const rot = Math.round(rotation * 10) / 10;
+    if (rx === this.x && ry === this.y && rot === this.rotation) return;
     this.x = rx;
     this.y = ry;
-    this.canvas.style.transform = `translate3d(${rx}px, ${ry}px, 0)`;
+    this.rotation = rot;
+    this.canvas.style.transform = rot
+      ? `translate3d(${rx}px, ${ry}px, 0) rotate(${rot}deg)`
+      : `translate3d(${rx}px, ${ry}px, 0)`;
   }
 
   destroy(): void {

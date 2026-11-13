@@ -7,6 +7,7 @@
   "version": "1.0.0",
   "description": "Petit robot dÃ©veloppeur qui aime les terminaux, les balles rebondissantes et les siestes sur les barres de titre.",
   "license": "MIT",
+  "accentColor": "#4dfcb0",
   "minAppVersion": "0.1.0",
   "tags": ["robot", "code", "default"],
   "sprite": {

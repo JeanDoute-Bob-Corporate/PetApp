@@ -396,59 +396,47 @@ function paintSide(pose: SidePose, bob: number, blink: boolean) {
       }
     }
   };
-  /** Trait épais : contour 3 px, cœur 1 px de la couleur du membre. */
-  const segment = (x0: number, y0: number, x1: number, y1: number, pass: 'outline' | Rgba): void => {
-    const steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
-    for (let i = 0; i <= steps; i++) {
-      const x = Math.round(x0 + ((x1 - x0) * i) / steps);
-      const y = Math.round(y0 + ((y1 - y0) * i) / steps);
-      if (pass === 'outline') fill(x - 1, y - 1, 3, 3, OUTLINE);
-      else fill(x, y, 1, 1, pass);
-    }
+  /** Petite main : un moignon court qui touche le mur (x = 31). */
+  const hand = (high: boolean, color: Rgba): void => {
+    const y = (high ? 10 : 17) + bob;
+    fill(26, y, 6, 4, OUTLINE);
+    fill(27, y + 1, 4, 2, color);
   };
-  /** Membre articulé (épaule → coude → main) terminé par une main/un pied contre le mur. */
-  const limb = (joints: Array<[number, number]>, color: Rgba): void => {
-    const end = joints[joints.length - 1]!;
-    for (let i = 1; i < joints.length; i++) segment(joints[i - 1]![0], joints[i - 1]![1], joints[i]![0], joints[i]![1], 'outline');
-    fill(end[0] - 1, end[1] - 2, 4, 4, OUTLINE);
-    for (let i = 1; i < joints.length; i++) segment(joints[i - 1]![0], joints[i - 1]![1], joints[i]![0], joints[i]![1], color);
-    fill(end[0], end[1] - 1, 2, 2, color);
+  /** Petit pied : posé contre le mur, plus ou moins haut. */
+  const foot = (up: boolean, color: Rgba): void => {
+    const y = up ? 24 : 28;
+    fill(23, y, 9, 4, OUTLINE);
+    fill(24, y + 1, 7, 2, color);
   };
-  const arm = (high: boolean, color: Rgba): void =>
-    high
-      ? limb([[19, 19 + bob], [24, 14 + bob], [29, 11 + bob]], color)
-      : limb([[19, 21 + bob], [24, 24 + bob], [29, 21 + bob]], color);
-  const leg = (up: boolean, color: Rgba): void =>
-    up ? limb([[16, 25], [22, 22], [29, 25]], color) : limb([[15, 25], [19, 29], [29, 29]], color);
 
-  // Membres arrière (plus sombres), puis corps, puis membres avant.
-  arm(pose.backArm === 'high', SHADE);
-  leg(pose.backLeg === 'up', SHADE);
+  // Pattes arrière (plus sombres), puis corps, puis pattes avant.
+  hand(pose.backArm === 'high', SHADE);
+  foot(pose.backLeg === 'up', SHADE);
 
-  // Corps vu de profil.
-  fill(11, 18 + bob, 11, 8, OUTLINE);
-  fill(12, 19 + bob, 9, 6, BODY);
-  fill(12, 24 + bob, 9, 1, SHADE);
-  fill(19, 20 + bob, 2, 2, ACCENT);
+  // Corps vu de profil, collé au mur.
+  fill(14, 18 + bob, 12, 9, OUTLINE);
+  fill(15, 19 + bob, 10, 7, BODY);
+  fill(15, 25 + bob, 10, 1, SHADE);
+  fill(22, 20 + bob, 2, 2, ACCENT);
 
   // Tête de profil, l'écran du visage tourné vers le mur.
-  fill(9, 5 + bob, 15, 14, OUTLINE);
-  fill(10, 6 + bob, 13, 12, BODY);
-  fill(10, 16 + bob, 13, 2, SHADE);
-  fill(11, 7 + bob, 2, 1, LIGHT);
-  fill(17, 8 + bob, 6, 7, SCREEN);
-  if (blink) fill(20, 11 + bob, 2, 1, EYE);
-  else fill(20, 10 + bob, 2, 2, EYE);
-  fill(19, 13 + bob, 3, 1, EYE);
+  fill(12, 5 + bob, 15, 14, OUTLINE);
+  fill(13, 6 + bob, 13, 12, BODY);
+  fill(13, 16 + bob, 13, 2, SHADE);
+  fill(14, 7 + bob, 2, 1, LIGHT);
+  fill(20, 8 + bob, 6, 7, SCREEN);
+  if (blink) fill(23, 11 + bob, 2, 1, EYE);
+  else fill(23, 10 + bob, 2, 2, EYE);
+  fill(22, 13 + bob, 3, 1, EYE);
   // Boulon arrière.
-  fill(7, 10 + bob, 2, 4, OUTLINE);
+  fill(10, 10 + bob, 2, 4, OUTLINE);
 
   // Antenne, légèrement penchée vers l'arrière.
-  fill(14, 2 + bob, 2, 3, OUTLINE);
-  fill(12, 0 + bob, 4, 3, OUTLINE);
-  fill(13, 1 + bob, 2, 1, ACCENT);
+  fill(17, 2 + bob, 2, 3, OUTLINE);
+  fill(15, 0 + bob, 4, 3, OUTLINE);
+  fill(16, 1 + bob, 2, 1, ACCENT);
 
-  arm(pose.frontArm === 'high', BODY);
-  leg(pose.frontLeg === 'up', BODY);
+  hand(pose.frontArm === 'high', BODY);
+  foot(pose.frontLeg === 'up', BODY);
   return px;
 }

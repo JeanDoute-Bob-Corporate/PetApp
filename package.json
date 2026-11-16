@@ -12,7 +12,7 @@
     "icons": "node scripts/gen-icon.ts && tauri icon src-tauri/icons/app-icon.png",
     "companion": "node scripts/build-default-companion.ts",
     "test": "node --test \"src/**/*.test.ts\"",
-    "examples": "node scripts/build-example-packs.ts",
+    "examples": "node scripts/build-example-packs.ts && node scripts/build-ember-pack.ts && node scripts/pack-companion.ts examples/braise examples/braise.companion",
     "measure": "powershell -NoProfile -File scripts/measure-memory.ps1 -CpuSeconds 10",
     "pack": "node scripts/pack-companion.ts",
     "template": "node scripts/build-template.ts",

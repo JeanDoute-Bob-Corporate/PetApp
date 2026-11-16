@@ -609,6 +609,14 @@ mod tests {
     }
 
     #[test]
+    fn braise_pack_is_valid() {
+        let files = read_archive(&example("braise.companion")).expect("archive");
+        let manifest = validate(&files).unwrap_or_else(|e| panic!("{e:#?}"));
+        assert_eq!(manifest.id, "dev.exemple.braise");
+        assert_eq!(manifest.accent_color.as_deref(), Some("#f0805c"));
+    }
+
+    #[test]
     fn broken_pack_lists_every_error() {
         // Le chemin « ../../evil.json » fait échouer la lecture de l'archive elle-même.
         let errors = read_archive(&example("pack-invalide.companion")).unwrap_err();

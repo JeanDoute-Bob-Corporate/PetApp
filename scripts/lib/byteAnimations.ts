@@ -443,7 +443,10 @@ export type Palette = Array<[readonly [number, number, number], readonly [number
  * Peint toutes les animations sur une planche (une ligne chacune) et produit le
  * contenu d'animations.json correspondant.
  */
-export function renderSheet(palette: Palette = []): { png: Buffer; animations: Record<string, unknown> } {
+export function renderSheet(
+  palette: Palette = [],
+  painter: (spec: FrameSpec) => Uint8ClampedArray = paintFrame,
+): { png: Buffer; animations: Record<string, unknown> } {
   const names = Object.keys(ANIMATIONS);
   const columns = Math.max(...Object.values(ANIMATIONS).map((a) => a.frames.length));
   const width = columns * FRAME;
@@ -457,7 +460,7 @@ export function renderSheet(palette: Palette = []): { png: Buffer; animations: R
       throw new Error(`${name} : frameDurations doit contenir ${src.frames.length} valeurs`);
     }
     src.frames.forEach((spec, col) => {
-      const frame = paintFrame(spec);
+      const frame = painter(spec);
       for (let o = 0; o < frame.length; o += 4) {
         for (const [from, to] of palette) {
           if (frame[o] === from[0] && frame[o + 1] === from[1] && frame[o + 2] === from[2]) {

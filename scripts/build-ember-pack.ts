@@ -1,0 +1,49 @@
+/**
+ * Génère le compagnon « Braise » (personnage original) :
+ *   - examples/braise/            dossier source (manifest, animations, planche) ;
+ *   - examples/braise.companion   le pack, prêt à glisser sur le compagnon.
+ * Mêmes 38 animations que Byte (byteAnimations.ts), peintes par emberPainter.ts.
+ *
+ * Usage : node scripts/build-ember-pack.ts   (puis npm run pack -- examples/braise)
+ */
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { renderSheet } from './lib/byteAnimations.ts';
+import { paintFrame } from './lib/emberPainter.ts';
+
+const OUT = resolve(dirname(fileURLToPath(import.meta.url)), '../examples/braise');
+mkdirSync(OUT, { recursive: true });
+
+const { png, animations } = renderSheet([], paintFrame);
+
+const manifest = {
+  formatVersion: 1,
+  id: 'dev.exemple.braise',
+  name: 'Braise',
+  author: 'Desktop Companion (exemple)',
+  version: '1.0.0',
+  description: 'Petite boule de braise câline et pleine d’énergie : curieuse, joueuse, toujours prête à grimper partout.',
+  license: 'MIT',
+  accentColor: '#f0805c',
+  tags: ['creature', 'mignon', 'orange'],
+  sprite: { file: 'spritesheet.png', frameWidth: 32, frameHeight: 32, scale: 3, facing: 'right' },
+  // Corps rond (x 7–24) et flammèche (y 3) jusqu'aux pieds.
+  hitbox: { x: 6, y: 3, width: 20, height: 29 },
+  anchorPoints: {
+    feet: { x: 16, y: 32 },
+    bubble: { x: 16, y: 3 },
+    head: { x: 16, y: 12 },
+    handLeft: { x: 7, y: 21 },
+    handRight: { x: 25, y: 21 },
+  },
+  baseStats: { strength: 5, agility: 7, endurance: 5, technique: 5 },
+  personalityWeights: { playful: 1.6, lazy: 0.8, curious: 1.5, social: 1.4, brave: 1.2, glutton: 1.2, mischievous: 1 },
+};
+
+const json = (v: unknown): string => `${JSON.stringify(v, null, 2)}\n`;
+writeFileSync(resolve(OUT, 'manifest.json'), json(manifest));
+writeFileSync(resolve(OUT, 'animations.json'), json({ formatVersion: 1, animations }));
+writeFileSync(resolve(OUT, 'spritesheet.png'), png);
+console.log(`Braise : ${Object.keys(animations).length} animations écrites dans ${OUT}`);

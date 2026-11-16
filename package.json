@@ -17,7 +17,8 @@
     "pack": "node scripts/pack-companion.ts",
     "template": "node scripts/build-template.ts",
     "ui-icons": "node scripts/build-ui-icons.ts",
-    "release": "node scripts/release.ts"
+    "release": "node scripts/release.ts",
+    "bump": "node scripts/bump-version.ts"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

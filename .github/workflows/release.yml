@@ -1,0 +1,108 @@
+# Publication automatique des mises à jour.
+#
+# À chaque push sur main : si la version de src-tauri/tauri.conf.json n'a pas encore
+# été publiée (pas de tag v<version>), GitHub construit l'application sous Windows, la
+# signe avec la clé de mise à jour, et publie une Release v<version> contenant
+# l'installateur et latest.json. Les applications installées la proposent ensuite
+# toutes seules.
+#
+# Si la version n'a pas changé, rien n'est publié : on peut pousser du travail en cours
+# sans déclencher de mise à jour chez les amis.
+#
+# Prérequis (une seule fois) : le secret TAURI_SIGNING_PRIVATE_KEY (voir docs/MISES_A_JOUR.md).
+name: Publication
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publication
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Nouvelle version ?
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      publish: ${{ steps.tag.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: version
+        run: echo "version=$(node -p "require('./src-tauri/tauri.conf.json').version")" >> "$GITHUB_OUTPUT"
+      - id: tag
+        run: |
+          if git rev-parse -q --verify "refs/tags/v${{ steps.version.outputs.version }}" >/dev/null; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "La version ${{ steps.version.outputs.version }} est déjà publiée : rien à faire." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  release:
+    name: Construire, signer, publier
+    needs: check
+    if: needs.check.outputs.publish == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Clé de signature présente ?
+        shell: bash
+        env:
+          KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error::Secret TAURI_SIGNING_PRIVATE_KEY manquant (Settings › Secrets and variables › Actions). Voir docs/MISES_A_JOUR.md."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - name: Tests
+        run: npm test
+
+      - name: Notes de version (commits depuis la version précédente)
+        id: notes
+        shell: bash
+        run: |
+          previous=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
+          range=${previous:+$previous..HEAD}
+          {
+            echo 'text<<NOTES_EOF'
+            git log --no-merges --pretty='- %s' $range | head -n 25
+            echo 'NOTES_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
+        with:
+          tagName: v__VERSION__
+          releaseName: Desktop Companion v__VERSION__
+          releaseBody: ${{ steps.notes.outputs.text }}
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true

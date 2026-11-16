@@ -103,6 +103,8 @@ pub struct BehaviorToggles {
     pub mischief_icons: bool,
     /// Bêtises : cliquer (uniquement sur le fond du bureau).
     pub mischief_clicks: bool,
+    /// Multijoueur : lueur colorée et nom du voisin sur les bords reliés.
+    pub edge_markers: bool,
 }
 
 impl Default for BehaviorToggles {
@@ -116,6 +118,7 @@ impl Default for BehaviorToggles {
             mischief_windows: true,
             mischief_icons: true,
             mischief_clicks: true,
+            edge_markers: true,
         }
     }
 }

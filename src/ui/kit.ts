@@ -1,6 +1,6 @@
 /**
- * Kit d'interface « Byte OS » : icônes pixel-art, boutons, interrupteurs, jauges
- * segmentées et pastilles. Tout est du DOM léger stylé par styles.css.
+ * Kit d'interface : icônes pixel-art, boutons, interrupteurs, jauges et pastilles.
+ * Tout est du DOM léger stylé par styles.css.
  */
 import { ICON_NAMES, type IconName } from './iconNames';
 import { h } from './Panel';
@@ -46,17 +46,16 @@ export interface Gauge {
   set(value: number, text: string, alert?: boolean): void;
 }
 
-/** Jauge segmentée (0–100) façon écran à cristaux. */
-export function gauge(label: string, tone: string, leading?: IconName, segments = 12): Gauge {
-  const cells = Array.from({ length: segments }, () => h('i.seg'));
+/** Jauge arrondie (0–100). */
+export function gauge(label: string, tone: string, leading?: IconName): Gauge {
+  const fill = h('i.gauge-fill');
   const value = h('span.gauge-value');
-  const track = h('span.gauge-track', {}, ...cells);
+  const track = h('span.gauge-track', {}, fill);
   const row = h(`div.gauge.tone-${tone}`, {}, leading ? icon(leading) : h('i.ico.none'), h('span.gauge-label', {}, label), track, value);
   return {
     row,
     set(v, text, alert = false) {
-      const lit = Math.round((Math.max(0, Math.min(100, v)) / 100) * segments);
-      cells.forEach((c, i) => c.classList.toggle('on', i < lit));
+      fill.style.width = `${Math.max(0, Math.min(100, v))}%`;
       row.classList.toggle('alert', alert);
       value.textContent = text;
     },
@@ -68,7 +67,7 @@ export function chip(text: string, tone = ''): HTMLElement {
   return h(`span.chip${tone ? `.${tone}` : ''}`, {}, text);
 }
 
-/** Titre de rubrique : `// SOINS`. */
+/** Titre de rubrique. */
 export function heading(text: string): HTMLElement {
   return h('h3.sec-title', {}, text);
 }

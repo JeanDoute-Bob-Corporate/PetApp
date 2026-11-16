@@ -6,7 +6,8 @@
 import { NOTE_MAX_LENGTH } from '../entities/CompanionStats';
 import type { Placement, Side } from './Layout';
 
-export const PROTOCOL_VERSION = 2;
+/** 3 : salon en file horizontale (gauche ↔ droite). */
+export const PROTOCOL_VERSION = 3;
 export const MAX_PLAYERS = 8;
 export const PLAYER_COLORS = ['#4dfcb0', '#ff6b6b', '#5a96e6', '#ffc65c', '#c38bff', '#ff9fd0', '#7ee0ff', '#b6e36b'];
 

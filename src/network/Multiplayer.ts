@@ -370,6 +370,7 @@ export class Multiplayer implements LoopSystem {
         this.edges.set(side, el);
       }
       const player = this.room.player(neighbor);
+      el.hidden = !this.d.settings().behaviors.edgeMarkers;
       el.style.setProperty('--player', player?.color ?? '#4dfcb0');
       el.dataset['label'] = `${side === 'left' ? '← ' : side === 'top' ? '↑ ' : side === 'bottom' ? '↓ ' : ''}${player?.name ?? ''}${side === 'right' ? ' →' : ''}`;
       this.placeEdge(el, side);
@@ -448,6 +449,7 @@ export class Multiplayer implements LoopSystem {
   }
 
   setSettings(behaviors: BehaviorToggles, profile: ProfileParams): void {
+    for (const el of this.edges.values()) el.hidden = !behaviors.edgeMarkers;
     for (const c of this.visitorList()) {
       c.setBehaviors(behaviors);
       c.setProfile(profile);

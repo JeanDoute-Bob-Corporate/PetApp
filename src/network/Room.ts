@@ -1,5 +1,5 @@
 import { backend, events, type RoomInfo } from '../platform/bridge';
-import { moveTo, neighbors, placeNew, remove, sanitize, type Cell, type Placement, type Side } from './Layout';
+import { moveTo, neighbors, placeNew, remove, sanitize, type Placement, type Side } from './Layout';
 import { MAX_PLAYERS, parseMessage, PLAYER_COLORS, PROTOCOL_VERSION, type Message, type Player } from './protocol';
 
 export type Role = 'none' | 'host' | 'client';
@@ -99,10 +99,10 @@ export class Room {
     this.reset('Tu as quitté le salon.');
   }
 
-  /** Hôte : déplace l'écran d'un joueur dans la grille. */
-  move(id: string, cell: Cell): boolean {
+  /** Hôte : déplace l'écran d'un joueur à un rang de la file (0 = tout à gauche). */
+  move(id: string, index: number): boolean {
     if (!this.isHost) return false;
-    const next = moveTo(this.layout, id, cell);
+    const next = moveTo(this.layout, id, index);
     if (!next) return false;
     this.layout = next;
     this.broadcastRoom();
@@ -147,6 +147,13 @@ export class Room {
     if (this.role === 'host') {
       const sender = this.connPlayer.get(conn);
       if (msg.type === 'join') {
+        if (!sender && msg.v !== PROTOCOL_VERSION) {
+          // Version différente (placement incompatible) : on prévient avant de refuser.
+          const text = 'Ce salon utilise une autre version de Desktop Companion : mettez-vous tous à jour.';
+          this.sendRaw(conn, { type: 'notice', to: msg.id, text });
+          window.setTimeout(() => void backend.p2pClose(conn), 300);
+          return;
+        }
         if (sender || this.players.length >= MAX_PLAYERS || this.players.some((p) => p.id === msg.id)) {
           void backend.p2pClose(conn);
           return;

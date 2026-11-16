@@ -1,7 +1,7 @@
 {
   "name": "desktop-companion",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -16,10 +16,13 @@
     "measure": "powershell -NoProfile -File scripts/measure-memory.ps1 -CpuSeconds 10",
     "pack": "node scripts/pack-companion.ts",
     "template": "node scripts/build-template.ts",
-    "ui-icons": "node scripts/build-ui-icons.ts"
+    "ui-icons": "node scripts/build-ui-icons.ts",
+    "release": "node scripts/release.ts"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2"
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-process": "^2.4.0",
+    "@tauri-apps/plugin-updater": "^2.14.1"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",

@@ -41,6 +41,9 @@ pub fn run() {
         }));
     }
     builder
+        // Mises à jour : vérifiées depuis le frontend, signées (clé publique dans tauri.conf.json).
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             Some(vec!["--autostart"]),

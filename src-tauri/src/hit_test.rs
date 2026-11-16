@@ -26,6 +26,10 @@ const FAST_TICK: Duration = Duration::from_millis(16);
 const IDLE_TICK: Duration = Duration::from_millis(60);
 /// Overlay masqué.
 const HIDDEN_TICK: Duration = Duration::from_millis(250);
+/// Durée d'un « bail » de capture : le frontend le renouvelle tant qu'il en a besoin.
+/// S'il ne le fait plus (page rechargée, script bloqué, relâchement perdu), l'overlay
+/// redevient transparent aux clics tout seul : il ne peut jamais bloquer le PC.
+const CAPTURE_LEASE: Duration = Duration::from_secs(3);
 /// Débit maximal de l'événement `cursor-moved` vers la webview (~30 Hz).
 const CURSOR_EMIT_INTERVAL: Duration = Duration::from_millis(33);
 
@@ -85,8 +89,8 @@ struct CursorPayload {
 pub struct HitState {
     rects: Mutex<Vec<HitRect>>,
     geometry: Mutex<OverlayGeometry>,
-    /// Forcé par le frontend pendant un drag ou quand un menu est ouvert.
-    capture: AtomicBool,
+    /// Forcé par le frontend pendant un drag ou une visée, jusqu'à cette échéance.
+    capture_until: Mutex<Option<Instant>>,
     visible: AtomicBool,
     cursor_tracking: AtomicBool,
 }
@@ -102,7 +106,7 @@ impl HitState {
         Self {
             rects: Mutex::new(Vec::new()),
             geometry: Mutex::new(OverlayGeometry::default()),
-            capture: AtomicBool::new(false),
+            capture_until: Mutex::new(None),
             visible: AtomicBool::new(true),
             cursor_tracking: AtomicBool::new(false),
         }
@@ -115,7 +119,19 @@ impl HitState {
     }
 
     pub fn set_capture(&self, active: bool) {
-        self.capture.store(active, Ordering::Relaxed);
+        *lock(&self.capture_until) = active.then(|| Instant::now() + CAPTURE_LEASE);
+    }
+
+    fn capturing(&self) -> bool {
+        let mut until = lock(&self.capture_until);
+        match *until {
+            Some(t) if Instant::now() < t => true,
+            Some(_) => {
+                *until = None; // bail expiré : on rend la souris au bureau
+                false
+            }
+            None => false,
+        }
     }
 
     pub fn set_visible(&self, visible: bool) {
@@ -143,7 +159,7 @@ impl HitState {
     }
 
     fn wants_cursor(&self, x: f64, y: f64) -> bool {
-        self.capture.load(Ordering::Relaxed)
+        self.capturing()
             || lock(&self.rects).iter().any(|r| r.contains(x, y, HIT_MARGIN))
     }
 }
@@ -222,4 +238,35 @@ fn cursor_position() -> Option<(i32, i32)> {
 #[cfg(not(windows))]
 fn cursor_position() -> Option<(i32, i32)> {
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn capture_is_a_lease_that_can_be_released() {
+        let state = HitState::new();
+        assert!(!state.wants_cursor(10.0, 10.0));
+        state.set_capture(true);
+        assert!(state.wants_cursor(10.0, 10.0), "capture active : tout l'overlay est interactif");
+        state.set_capture(false);
+        assert!(!state.wants_cursor(10.0, 10.0));
+    }
+
+    #[test]
+    fn expired_lease_gives_the_mouse_back() {
+        let state = HitState::new();
+        *lock(&state.capture_until) = Some(Instant::now() - Duration::from_millis(1));
+        assert!(!state.wants_cursor(10.0, 10.0), "bail expiré : click-through");
+        assert!(lock(&state.capture_until).is_none());
+    }
+
+    #[test]
+    fn hitboxes_still_work_without_capture() {
+        let state = HitState::new();
+        state.set_rects(vec![HitRect { x: 100.0, y: 100.0, w: 50.0, h: 50.0 }]);
+        assert!(state.wants_cursor(120.0, 120.0));
+        assert!(!state.wants_cursor(10.0, 10.0));
+    }
 }

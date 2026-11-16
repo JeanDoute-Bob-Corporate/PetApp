@@ -18,7 +18,7 @@ export class NotePanel extends Panel {
     onKeyboard: (enabled: boolean) => void,
     onToggle: (open: boolean) => void,
   ) {
-    super(stage, 'NOTE', onToggle, 'note');
+    super(stage, 'Petit mot', onToggle, 'note');
     this.el.classList.add('note-win');
     this.onKeyboard = onKeyboard;
     this.input = h('textarea.note-input', {
@@ -96,7 +96,7 @@ export class Aimer {
     svg.setAttribute('class', 'aim-svg');
     this.line = document.createElementNS(ns, 'line');
     svg.append(this.line);
-    this.hint = h('div.aim-hint', {}, 'CLIC : LANCER · CLIC DROIT : ANNULER');
+    this.hint = h('div.aim-hint', {}, 'Clic : lancer · clic droit : annuler');
     this.layer = h('div.aim-layer', { hidden: true }, this.hint);
     this.layer.prepend(svg);
     stage.append(this.layer);

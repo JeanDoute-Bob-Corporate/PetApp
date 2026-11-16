@@ -118,7 +118,10 @@ export class CombatDirector implements LoopSystem {
     if (this.phase === 'idle' || !this.fighters || !this.state) return;
     const [a, b] = this.fighters;
     if (a.away || b.away || a.fsm.name !== 'fight' || b.fsm.name !== 'fight') {
-      if (this.phase !== 'ended') return this.release();
+      if (this.phase !== 'ended') {
+        this.d.log?.(`combat interrompu (${this.phase}) : ${a.away ? 'absent' : a.fsm.name} / ${b.away ? 'absent' : b.fsm.name}`);
+        return this.release();
+      }
     }
     const now = performance.now();
 

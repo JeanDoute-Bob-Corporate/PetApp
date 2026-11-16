@@ -25,6 +25,8 @@ export interface BehaviorToggles {
   mischiefWindows: boolean;
   mischiefIcons: boolean;
   mischiefClicks: boolean;
+  /** Lueur colorée et nom du voisin sur les bords reliés (multijoueur). */
+  edgeMarkers: boolean;
 }
 
 /** Icône du bureau (rectangle en px CSS de l'overlay). */
@@ -148,6 +150,7 @@ const BROWSER_FALLBACK: SettingsPayload = {
       mischiefWindows: true,
       mischiefIcons: true,
       mischiefClicks: true,
+      edgeMarkers: true,
     },
     visible: true,
     activePack: null,

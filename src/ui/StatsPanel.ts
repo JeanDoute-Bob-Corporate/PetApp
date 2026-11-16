@@ -37,7 +37,7 @@ export class StatsPanel extends Section {
     this.doing = h('span.id-doing');
     this.form = h('span.chip');
     this.form.title = 'Forme : multiplie la puissance en combat (moral, faim, fatigue)';
-    this.counters = h('p.counters');
+    this.counters = h('div.counters');
 
     const needs = h('div.gauges');
     for (const k of NEED_KEYS) {
@@ -80,12 +80,19 @@ export class StatsPanel extends Section {
     this.name.textContent = s.data.name;
     const mood = MOOD[s.mood()];
     this.mood.replaceChildren(chip(mood.text, mood.tone));
-    this.doing.textContent = `> ${STATE_LABELS[this.companion.state] ?? this.companion.state}`;
+    this.doing.textContent = STATE_LABELS[this.companion.state] ?? this.companion.state;
     const c = s.condition();
-    this.form.textContent = `FORME ×${c.toFixed(2)}`;
+    this.form.textContent = `Forme ×${c.toFixed(2)}`;
     this.form.className = `chip ${c >= 1.05 ? 'good' : c < 0.8 ? 'bad' : ''}`;
     const days = Math.floor((Date.now() - s.data.bornAt) / 86_400_000);
     const n = s.data.counters;
-    this.counters.textContent = `J+${days} · ${n.meals} repas · ${n.trainings} entraîn. · ${n.pets} caresses · ${n.bugs} bugs`;
+    const stat = (value: number, label: string): HTMLElement => h('span.counter', {}, h('strong', {}, String(value)), label);
+    this.counters.replaceChildren(
+      stat(days, days > 1 ? 'jours' : 'jour'),
+      stat(n.meals, 'repas'),
+      stat(n.trainings, 'séances'),
+      stat(n.pets, 'câlins'),
+      stat(n.bugs, 'bugs'),
+    );
   }
 }

@@ -1,4 +1,4 @@
-import { GRID_COLS, GRID_ROWS, type Cell, type Side } from '../network/Layout';
+import { order, type Side } from '../network/Layout';
 import type { Room } from '../network/Room';
 import type { RoomInfo } from '../platform/bridge';
 import { button, chip, heading } from './kit';
@@ -13,11 +13,11 @@ export interface LobbyActions {
   keyboard(enabled: boolean): void;
 }
 
-const SIDE_ARROWS: Record<Side, string> = { left: '◀', right: '▶', top: '▲', bottom: '▼' };
+const SIDE_ARROWS: Partial<Record<Side, string>> = { left: '←', right: '→' };
 
 /**
- * Salon : créer ou rejoindre, puis placer les écrans sur une grille. Deux écrans
- * voisins sont reliés par leurs bords. Seul l'hôte déplace les écrans.
+ * Salon : créer ou rejoindre, puis ordonner les écrans dans une file de gauche à
+ * droite. Deux écrans voisins sont reliés par leurs bords. Seul l'hôte réordonne.
  */
 export class LobbyPanel extends Section {
   private readonly room: Room;
@@ -28,13 +28,11 @@ export class LobbyPanel extends Section {
   private readonly codeInput: HTMLInputElement;
   private readonly codeBox: HTMLElement;
   private readonly codeRow: HTMLElement;
-  private readonly players: HTMLElement;
-  private readonly grid: HTMLElement;
-  private readonly gridTitle: HTMLElement;
+  private readonly strip: HTMLElement;
+  private readonly stripTitle: HTMLElement;
   private readonly links: HTMLElement;
   private readonly awayLine: HTMLElement;
   private readonly message: HTMLElement;
-  private selected: string | null = null;
   private away: string | null = null;
 
   constructor(hub: Console, room: Room, actions: LobbyActions) {
@@ -78,20 +76,16 @@ export class LobbyPanel extends Section {
       if (this.room.code) void navigator.clipboard?.writeText(this.room.code).then(() => this.say('Code copié'));
     }, { icon: 'copy', title: 'Copier le code' });
     this.codeRow = h('div.row', {}, this.codeBox, copy);
-    this.players = h('div.players');
-    this.grid = h('div.screen-grid', { role: 'grid', 'aria-label': 'Placement des écrans' });
-    this.grid.style.setProperty('--cols', String(GRID_COLS));
-    this.gridTitle = heading('Écrans');
+    this.strip = h('ol.screen-strip', { 'aria-label': 'Écrans reliés, de gauche à droite' });
+    this.stripTitle = heading('Écrans reliés');
     this.links = h('div.edges');
     this.awayLine = h('p.away-line');
     this.inside = h(
       'div',
       { hidden: true },
       this.codeRow,
-      heading('Joueurs'),
-      this.players,
-      this.gridTitle,
-      this.grid,
+      this.stripTitle,
+      this.strip,
       this.links,
       this.awayLine,
       h(
@@ -152,65 +146,57 @@ export class LobbyPanel extends Section {
     if (room.inRoom) {
       this.codeRow.hidden = !room.isHost || !room.code;
       this.codeBox.textContent = room.code ?? '';
-      this.players.replaceChildren(
-        ...room.players.map((p) => {
-          const el = h('span.player', {}, h('i.dot'), p.name);
-          el.style.setProperty('--player', p.color);
-          if (p.id === room.hostId) el.append(chip('Hôte'));
-          if (p.id === room.myId) el.classList.add('me');
-          return el;
-        }),
-      );
-      this.renderGrid();
+      this.renderStrip();
       const links = room.myLinks();
-      const items = (Object.keys(SIDE_ARROWS) as Side[])
+      const items = (['left', 'right'] as const)
         .filter((s) => links[s])
-        .map((s) => h('span.edge', {}, `${SIDE_ARROWS[s]} ${room.player(links[s]!)?.name ?? '?'}`));
-      this.links.replaceChildren(...(items.length > 0 ? items : [h('span.muted', {}, 'Aucun bord relié')]));
+        .map((s) => h('span.edge', {}, s === 'left' ? `${SIDE_ARROWS.left} ${room.player(links[s]!)?.name ?? '?'}` : `${room.player(links[s]!)?.name ?? '?'} ${SIDE_ARROWS.right}`));
+      this.links.replaceChildren(
+        ...(items.length > 0 ? [h('span.muted', {}, 'Tes bords :'), ...items] : [h('span.muted', {}, 'Personne à côté de toi pour l’instant')]),
+      );
       this.awayLine.textContent = this.away ? `Ton compagnon est chez ${this.away}` : '';
     }
     this.measure();
   }
 
-  private renderGrid(): void {
+  /** La file des écrans, de gauche à droite ; l'hôte les décale avec les flèches. */
+  private renderStrip(): void {
     const room = this.room;
     const host = room.isHost;
-    this.gridTitle.title = host
-      ? 'Clique un écran puis une case libre pour le déplacer. Deux écrans voisins sont reliés.'
-      : 'Seul l’hôte déplace les écrans';
-    const at = new Map<string, string>();
-    for (const [id, c] of Object.entries(room.layout)) at.set(`${c.col},${c.row}`, id);
-    const cells: HTMLElement[] = [];
-    for (let row = 0; row < GRID_ROWS; row++) {
-      for (let col = 0; col < GRID_COLS; col++) {
-        const id = at.get(`${col},${row}`);
-        const player = id ? room.player(id) : undefined;
-        const cell = h(
-          'button.grid-cell',
-          { type: 'button', disabled: !host, 'aria-label': player ? `Écran de ${player.name}` : 'Case libre' },
-          player ? player.name.slice(0, 8) : '',
-        );
-        if (player) {
-          cell.classList.add('taken');
-          cell.style.setProperty('--player', player.color);
-          if (id === room.myId) cell.classList.add('mine');
-          if (id === this.selected) cell.classList.add('selected');
-        }
-        cell.addEventListener('click', () => this.onCell(id ?? null, { col, row }));
-        cells.push(cell);
+    this.stripTitle.title = host
+      ? 'Ordre des écrans, de gauche à droite : le bord droit d’un écran mène au suivant. Utilise les flèches pour réordonner.'
+      : 'Ordre des écrans, de gauche à droite. Seul l’hôte peut le changer.';
+    const line = order(room.layout);
+    const cards: HTMLElement[] = [];
+    line.forEach((id, i) => {
+      const p = room.player(id);
+      if (!p) return;
+      if (i > 0) cards.push(h('li.strip-link', { 'aria-hidden': 'true' }));
+      const screen = h('div.strip-screen', {}, h('span.strip-name', {}, p.name));
+      const tags = h('div.strip-tags');
+      if (id === room.myId) tags.append(chip('Toi'));
+      if (id === room.hostId) tags.append(chip('Hôte'));
+      const card = h('li.strip-card', { title: p.name }, screen, tags);
+      card.style.setProperty('--player', p.color);
+      if (id === room.myId) card.classList.add('me');
+      if (host && line.length > 1) {
+        const moves = h('div.strip-moves');
+        const left = button('', () => this.shift(id, i - 1), { title: `Décaler ${p.name} à gauche` });
+        left.append('‹');
+        left.disabled = i === 0;
+        const right = button('', () => this.shift(id, i + 1), { title: `Décaler ${p.name} à droite` });
+        right.append('›');
+        right.disabled = i === line.length - 1;
+        moves.append(left, right);
+        card.append(moves);
       }
-    }
-    this.grid.replaceChildren(...cells);
+      cards.push(card);
+    });
+    this.strip.replaceChildren(...cards);
   }
 
-  private onCell(id: string | null, cell: Cell): void {
-    if (!this.room.isHost) return;
-    if (id) {
-      this.selected = this.selected === id ? null : id;
-    } else if (this.selected) {
-      if (!this.room.move(this.selected, cell)) this.say('Case indisponible');
-      this.selected = null;
-    }
+  private shift(id: string, index: number): void {
+    if (!this.room.move(id, index)) this.say('Déplacement impossible');
     this.render();
   }
 }

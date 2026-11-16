@@ -1,7 +1,8 @@
 /**
- * Placement des écrans d'un salon sur une grille. Deux écrans voisins dans la grille
- * sont reliés par leurs bords : à droite de A ↔ à gauche de B, en dessous de A ↔ au-dessus
- * de B. Module pur (sans dépendance), testé par `node --test`.
+ * Placement des écrans d'un salon : une file horizontale, de gauche à droite, sans trou.
+ * Deux écrans voisins dans la file sont reliés par leurs bords (droite de A ↔ gauche de
+ * B). Le sol de chacun reste le sien : on ne relie jamais un écran au-dessus d'un autre.
+ * Module pur (sans dépendance), testé par `node --test`.
  */
 
 export type Side = 'left' | 'right' | 'top' | 'bottom';
@@ -9,89 +10,81 @@ export interface Cell {
   col: number;
   row: number;
 }
-/** Position de chaque joueur (par identifiant). */
+/** Position de chaque joueur (par identifiant) : `col` = rang dans la file, `row` = 0. */
 export type Placement = Record<string, Cell>;
 
-export const GRID_COLS = 5;
-export const GRID_ROWS = 3;
-export const SIDES: readonly Side[] = ['left', 'right', 'top', 'bottom'];
+/** Longueur maximale de la file (= nombre maximal de joueurs). */
+export const LINE_MAX = 8;
 export const OPPOSITE: Record<Side, Side> = { left: 'right', right: 'left', top: 'bottom', bottom: 'top' };
-const STEP: Record<Side, Cell> = {
-  left: { col: -1, row: 0 },
-  right: { col: 1, row: 0 },
-  top: { col: 0, row: -1 },
-  bottom: { col: 0, row: 1 },
-};
 
-const inGrid = (c: Cell): boolean => c.col >= 0 && c.col < GRID_COLS && c.row >= 0 && c.row < GRID_ROWS;
-
-function occupant(layout: Placement, cell: Cell): string | null {
-  for (const [id, c] of Object.entries(layout)) if (c.col === cell.col && c.row === cell.row) return id;
-  return null;
+/** Identifiants dans l'ordre de la file, de gauche à droite. */
+export function order(layout: Placement): string[] {
+  return Object.entries(layout)
+    .sort((a, b) => a[1].col - b[1].col)
+    .map(([id]) => id);
 }
 
-/** Voisin de chaque bord d'un joueur (absent = bord non relié). */
-export function neighbors(layout: Placement, id: string): Partial<Record<Side, string>> {
-  const me = layout[id];
-  const out: Partial<Record<Side, string>> = {};
-  if (!me) return out;
-  for (const side of SIDES) {
-    const other = occupant(layout, { col: me.col + STEP[side].col, row: me.row + STEP[side].row });
-    if (other) out[side] = other;
-  }
+/** Reconstruit une file compacte (rangs 0, 1, 2…) à partir d'un ordre. */
+function fromOrder(ids: readonly string[]): Placement {
+  const out: Placement = {};
+  ids.forEach((id, col) => (out[id] = { col, row: 0 }));
   return out;
 }
 
-/** Place un nouveau joueur : à droite du dernier écran de la ligne du milieu, sinon ailleurs. */
+/** Voisins gauche et droite d'un joueur (absent = bord non relié). */
+export function neighbors(layout: Placement, id: string): Partial<Record<Side, string>> {
+  const line = order(layout);
+  const i = line.indexOf(id);
+  const out: Partial<Record<Side, string>> = {};
+  if (i < 0) return out;
+  if (i > 0) out.left = line[i - 1]!;
+  if (i < line.length - 1) out.right = line[i + 1]!;
+  return out;
+}
+
+/** Ajoute un joueur au bout (à droite) de la file. */
 export function placeNew(layout: Placement, id: string): Placement {
   if (layout[id]) return layout;
-  const next = { ...layout };
-  const middle = Math.floor(GRID_ROWS / 2);
-  const taken = Object.values(layout).filter((c) => c.row === middle);
-  const startCol = taken.length === 0 ? Math.floor(GRID_COLS / 2) : Math.max(...taken.map((c) => c.col)) + 1;
-  const candidates: Cell[] = [];
-  for (let col = startCol; col < GRID_COLS; col++) candidates.push({ col, row: middle });
-  for (let row = 0; row < GRID_ROWS; row++) for (let col = 0; col < GRID_COLS; col++) candidates.push({ col, row });
-  const free = candidates.find((c) => inGrid(c) && !occupant(layout, c));
-  if (free) next[id] = free;
-  return next;
+  const line = order(layout);
+  if (line.length >= LINE_MAX) return layout;
+  return fromOrder([...line, id]);
 }
 
-/** Déplace un joueur vers une case libre ; null si la case est prise ou hors grille. */
-export function moveTo(layout: Placement, id: string, cell: Cell): Placement | null {
-  if (!layout[id] || !inGrid(cell)) return null;
-  const other = occupant(layout, cell);
-  if (other && other !== id) return null;
-  return { ...layout, [id]: { ...cell } };
+/** Déplace un joueur à un rang de la file (les autres se décalent) ; null si impossible. */
+export function moveTo(layout: Placement, id: string, index: number): Placement | null {
+  const line = order(layout);
+  const from = line.indexOf(id);
+  if (from < 0 || !Number.isInteger(index) || index < 0 || index >= line.length) return null;
+  if (from === index) return layout;
+  line.splice(from, 1);
+  line.splice(index, 0, id);
+  return fromOrder(line);
 }
 
+/** Retire un joueur ; la file se resserre (ses deux voisins deviennent reliés). */
 export function remove(layout: Placement, id: string): Placement {
-  const next = { ...layout };
-  delete next[id];
-  return next;
+  return fromOrder(order(layout).filter((x) => x !== id));
 }
 
-/** Valide un placement reçu du réseau (cases dans la grille, sans doublon, joueurs connus). */
+/** Valide un placement reçu du réseau : une file compacte contenant exactement ces joueurs. */
 export function sanitize(raw: unknown, ids: readonly string[]): Placement | null {
   if (!raw || typeof raw !== 'object') return null;
   const out: Placement = {};
-  const seen = new Set<string>();
+  const seen = new Set<number>();
   for (const id of ids) {
     const c = (raw as Record<string, unknown>)[id] as Partial<Cell> | undefined;
-    if (!c || !Number.isInteger(c.col) || !Number.isInteger(c.row)) return null;
-    const cell = { col: c.col!, row: c.row! };
-    const key = `${cell.col},${cell.row}`;
-    if (!inGrid(cell) || seen.has(key)) return null;
-    seen.add(key);
-    out[id] = cell;
+    if (!c || !Number.isInteger(c.col) || c.row !== 0) return null;
+    const col = c.col!;
+    if (col < 0 || col >= ids.length || seen.has(col)) return null;
+    seen.add(col);
+    out[id] = { col, row: 0 };
   }
   return out;
 }
 
 /**
- * Position d'arrivée sur l'écran voisin : même proportion le long du bord, juste à
- * l'intérieur du bord opposé. `t` va de 0 à 1 (haut→bas pour un bord vertical,
- * gauche→droite pour un bord horizontal).
+ * Position d'arrivée sur l'écran voisin : même hauteur relative, juste à l'intérieur du
+ * bord opposé. `t` va de 0 (haut) à 1 (bas).
  */
 export function entryPoint(
   bounds: { left: number; top: number; right: number; bottom: number },

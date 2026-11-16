@@ -29,6 +29,8 @@ import type { ToyBox as ToyBoxType } from './entities/Toy';
 import { ToyBoxPanel } from './ui/ToyBoxPanel';
 import { Console } from './ui/Panel';
 import { applyAccentFrom } from './ui/theme';
+import { UpdatePanel } from './ui/UpdatePanel';
+import { appVersion, findUpdate } from './platform/updates';
 
 const DEFAULT_PACK_URL = '/companions/default/';
 const DEFAULT_PACK_ID = 'dev.default.byte';
@@ -88,12 +90,40 @@ async function bootstrap(): Promise<void> {
   let loop: GameLoop | null = null; // créée après les entités, mais réveillable dès leur construction
   const wake = (): void => loop?.wake();
 
-  // Plusieurs objets peuvent être tenus ou ouverts : le mode interactif est compté.
-  let captures = 0;
-  const capture = (on: boolean): void => {
-    captures = Math.max(0, captures + (on ? 1 : -1));
-    backend.setPointerCapture(captures > 0).catch(console.warn);
+  // Mode interactif total (toute la souris va à l'overlay) : pendant un glisser ou une
+  // visée seulement. Côté Rust c'est un bail de 3 s, renouvelé chaque seconde tant
+  // qu'il sert : une page bloquée ou rechargée ne peut donc jamais bloquer le PC.
+  let dragCaptures = 0;
+  let aiming = false;
+  let leaseTimer: number | undefined;
+  const pushCapture = (): void => {
+    const on = dragCaptures > 0 || aiming;
+    backend.setPointerCapture(on).catch(console.warn);
+    window.clearInterval(leaseTimer);
+    leaseTimer = on ? window.setInterval(() => backend.setPointerCapture(true).catch(console.warn), 1000) : undefined;
   };
+  const capture = (on: boolean): void => {
+    dragCaptures = Math.max(0, dragCaptures + (on ? 1 : -1));
+    pushCapture();
+  };
+  const captureAim = (on: boolean): void => {
+    aiming = on;
+    pushCapture();
+  };
+  // Filet de sécurité : un objet supprimé pendant qu'on appuie dessus (jouet mangé, note
+  // ouverte, visiteur renvoyé) ne reçoit jamais son relâchement. Dès que plus aucun
+  // bouton n'est enfoncé, les captures de glisser restantes sont orphelines.
+  const releaseOrphans = (): void => {
+    if (dragCaptures === 0) return;
+    dragCaptures = 0;
+    pushCapture();
+  };
+  for (const type of ['pointerup', 'pointercancel'] as const) {
+    window.addEventListener(type, (e) => {
+      if (e.buttons === 0) window.setTimeout(releaseOrphans, 0);
+    }, true);
+  }
+  window.addEventListener('blur', () => window.setTimeout(releaseOrphans, 0));
 
   const toys = new ToyBox(stage, toyAtlas, world, {
     onDragStateChanged: capture,
@@ -185,7 +215,24 @@ async function bootstrap(): Promise<void> {
     return { x: cx, y: (floor?.y ?? window.innerHeight) * 0.45 };
   };
   // La Console regroupe toutes les rubriques ; l'ordre de création fixe celui des onglets.
-  const hub = new Console(stage, wake, () => stats.data.name);
+  const hub = new Console(stage, wake, () => stats.data.name, (canvas) => {
+    // Portrait : première image de « idle », centrée et agrandie sans lissage.
+    const ctx = canvas.getContext('2d');
+    const idle = pack.animations['idle'];
+    if (!ctx || !idle) return;
+    const { frameWidth: fw, frameHeight: fh } = pack.manifest.sprite;
+    const k = Math.min(canvas.width / fw, canvas.height / fh);
+    ctx.imageSmoothingEnabled = false;
+    const col = idle.startColumn ?? 0;
+    const flip = pack.manifest.sprite.facing === 'left';
+    ctx.save();
+    if (flip) {
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(pack.image, col * fw, idle.row * fh, fw, fh, (canvas.width - fw * k) / 2, canvas.height - fh * k, fw * k, fh * k);
+    ctx.restore();
+  });
   new StatsPanel(hub, companion);
   const toyPanel = new ToyBoxPanel(hub, toys, { place: placeToy, feed, releaseBug: () => toys.spawnBug() });
   // Note en boule de papier : écrire, viser, il la lance.
@@ -193,14 +240,14 @@ async function bootstrap(): Promise<void> {
   const notePanel = new NotePanel(
     stage,
     (text) => {
-      capture(true);
+      captureAim(true);
       aimer.start(
         () => ({ x: companion.body.x, y: companion.body.y - companion.h * 0.7 }),
         (vx, vy) => {
           companion.fsm.go('throw', { vx, vy, text });
           wake();
         },
-        () => capture(false),
+        () => captureAim(false),
       );
       wake();
     },
@@ -391,6 +438,39 @@ async function bootstrap(): Promise<void> {
   registry.add(() => multiplayer.hitRects());
   registry.add(() => aimer.hitRect());
 
+  // --- Mises à jour ---------------------------------------------------------------
+  // Vérifiées 20 s après le démarrage puis toutes les 6 h ; proposées dans une petite
+  // fenêtre en bas à droite. Rien n'est installé sans un clic sur « Installer ».
+  const updatePanel = new UpdatePanel(
+    stage,
+    () => {
+      save(true);
+      companion.say('À tout de suite ! ✨', 3);
+    },
+    wake,
+  );
+  registry.add(() => updatePanel.hitRect());
+  const updateSpot = (): { x: number; y: number } => {
+    const floor = world.floors[0];
+    const right = floor ? floor.x2 : window.innerWidth;
+    const bottom = floor ? floor.y : window.innerHeight;
+    return { x: right - 190, y: bottom - 120 };
+  };
+  let dismissed = '';
+  const lookForUpdate = async (manual: boolean): Promise<string> => {
+    const update = await findUpdate();
+    if (!update) return 'Tu as la dernière version.';
+    if (manual || update.version !== dismissed) {
+      updatePanel.offer(update, updateSpot());
+      dismissed = update.version; // « Plus tard » : pas de nouvelle proposition automatique
+    }
+    return `Version ${update.version} disponible.`;
+  };
+  void appVersion().then((v) => settingsPanel.setUpdater(v, () => lookForUpdate(true)));
+  const autoCheck = (): void => void lookForUpdate(false).catch((err: unknown) => console.warn('[mise à jour]', err));
+  window.setTimeout(autoCheck, 20_000);
+  window.setInterval(autoCheck, 6 * 3600_000);
+
   const gameLoop = new GameLoop([toys, companion, multiplayer, director, bubble, registry], initial.profile);
   loop = gameLoop;
 
@@ -488,6 +568,8 @@ async function bootstrap(): Promise<void> {
     if (document.hidden) {
       save(true);
       gameLoop.stop();
+      aimer.stop();
+      releaseOrphans();
     } else {
       gameLoop.start();
     }

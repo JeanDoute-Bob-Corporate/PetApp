@@ -1,5 +1,5 @@
 import { backend, type BehaviorToggles, type PerformanceProfileId, type Settings } from '../platform/bridge';
-import { heading, toggle } from './kit';
+import { button, heading, toggle } from './kit';
 import { h, Section, type Console } from './Panel';
 
 const PROFILES: Array<{ id: PerformanceProfileId; label: string; hint: string }> = [
@@ -21,6 +21,10 @@ const MISCHIEF: Array<{ key: keyof BehaviorToggles; label: string; hint: string 
   { key: 'mischiefWindows', label: 'Tirer les fenêtres', hint: 'Tire ou repousse le côté d’une fenêtre (300 px max)' },
   { key: 'mischiefIcons', label: 'Déplacer les icônes', hint: 'Emporte une icône du bureau ailleurs' },
   { key: 'mischiefClicks', label: 'Cliquer', hint: 'Seulement sur le fond du bureau' },
+];
+
+const MULTIPLAYER: Array<{ key: keyof BehaviorToggles; label: string; hint: string }> = [
+  { key: 'edgeMarkers', label: 'Couleur des bords reliés', hint: 'Lueur et nom du voisin sur les bords de l’écran qui mènent chez un ami' },
 ];
 
 /** Réglages : chaque changement est appliqué et sauvegardé immédiatement. */
@@ -77,10 +81,34 @@ export class SettingsPanel extends Section {
       list(BEHAVIORS),
       mischiefTitle,
       list(MISCHIEF),
+      heading('Multijoueur'),
+      list(MULTIPLAYER),
       heading('Système'),
       h('div.switches', {}, autostart.row),
+      this.updateRow,
     );
     this.render();
+  }
+
+  /** Version installée et bouton « Rechercher une mise à jour ». */
+  private readonly updateRow: HTMLElement = h('div.row');
+
+  /** Branche la recherche manuelle de mise à jour (renvoie le message à afficher). */
+  setUpdater(version: string, check: () => Promise<string>): void {
+    const label = h('span.muted', {}, `Version ${version}`);
+    const status = h('span.muted');
+    const run = button('Rechercher une mise à jour', () => {
+      run.disabled = true;
+      status.textContent = '';
+      check()
+        .then((message) => (status.textContent = message))
+        .catch((err: unknown) => (status.textContent = `Impossible de vérifier (${String(err)})`))
+        .finally(() => {
+          run.disabled = false;
+          this.measure();
+        });
+    }, { kind: 'ghost', icon: 'import' });
+    this.updateRow.replaceChildren(h('div.row-main', {}, label, status), run);
   }
 
   override onShow(): void {

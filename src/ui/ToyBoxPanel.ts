@@ -62,7 +62,7 @@ export class ToyBoxPanel extends Section {
     for (const [kind, tile] of this.tiles) {
       const placed = this.toys.hasOwn(kind);
       tile.classList.toggle('on', placed);
-      tile.querySelector('.tile-state')!.textContent = placed ? 'POSÉ' : 'RANGÉ';
+      tile.querySelector('.tile-state')!.textContent = placed ? 'Posé' : 'Rangé';
     }
   }
 }

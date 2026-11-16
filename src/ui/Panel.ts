@@ -27,8 +27,8 @@ function glyph(name: IconName): HTMLElement {
 }
 
 /**
- * Fenêtre flottante « Byte OS » : barre de titre déplaçable, bouton fermer, zone
- * interactive publiée au hit-test uniquement quand elle est ouverte.
+ * Fenêtre flottante : barre de titre déplaçable, bouton fermer, zone interactive
+ * publiée au hit-test uniquement quand elle est ouverte.
  */
 export class Panel {
   readonly el: HTMLElement;
@@ -42,7 +42,7 @@ export class Panel {
     this.onToggle = onToggle;
     const close = h('button.win-close', { type: 'button', 'aria-label': 'Fermer', title: 'Fermer' }, glyph('close'));
     this.titleEl = h('h2', {}, title);
-    this.header = h('header.win-bar', {}, titleIcon ? glyph(titleIcon) : null, this.titleEl, h('span.win-fill'), close);
+    this.header = h('header.win-bar', {}, titleIcon ? h('span.win-badge', {}, glyph(titleIcon)) : null, this.titleEl, h('span.win-fill'), close);
     this.body = h('div.win-body');
     this.el = h('section.win', { role: 'dialog', 'aria-label': title, hidden: true }, this.header, this.body);
     stage.append(this.el);
@@ -140,12 +140,30 @@ export class Console extends Panel {
   private readonly labels = new Map<Section, string>();
   private current: Section | null = null;
   private readonly name: () => string;
+  private readonly subtitle: HTMLElement;
 
-  /** `name` : nom du compagnon, affiché dans la barre de titre. */
-  constructor(stage: HTMLElement, onToggle: (open: boolean) => void, name: () => string) {
-    super(stage, 'Console', onToggle, 'console');
+  /**
+   * `name` : nom du compagnon (titre). `drawAvatar` : dessine son portrait dans la
+   * barre de titre (première image de son animation de repos).
+   */
+  constructor(
+    stage: HTMLElement,
+    onToggle: (open: boolean) => void,
+    name: () => string,
+    drawAvatar?: (canvas: HTMLCanvasElement) => void,
+  ) {
+    super(stage, 'Console', onToggle);
     this.name = name;
     this.el.classList.add('console');
+    this.subtitle = h('small.win-sub');
+    const titles = h('div.win-titles');
+    this.titleEl.replaceWith(titles);
+    titles.append(this.titleEl, this.subtitle);
+    if (drawAvatar) {
+      const avatar = h('canvas.avatar', { width: '64', height: '64', 'aria-hidden': 'true' });
+      drawAvatar(avatar);
+      titles.before(avatar);
+    }
     this.tabBar = h('nav.tabs', { role: 'tablist' });
     this.header.after(this.tabBar);
   }
@@ -200,7 +218,8 @@ export class Console extends Panel {
     section.root.hidden = false;
     for (const [s, tab] of this.tabs) tab.setAttribute('aria-selected', String(s === section));
     this.el.dataset['tab'] = section.root.dataset['tab'] ?? '';
-    this.titleEl.textContent = `${this.name()} / ${this.labels.get(section) ?? ''}`.toUpperCase();
+    this.titleEl.textContent = this.name();
+    this.subtitle.textContent = this.labels.get(section) ?? '';
   }
 }
 
